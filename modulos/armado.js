@@ -1,0 +1,2 @@
+﻿// armado.js — Módulo armado
+

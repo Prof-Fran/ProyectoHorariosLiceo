@@ -1,0 +1,2 @@
+﻿// disponibilidad.js — Módulo disponibilidad
+
