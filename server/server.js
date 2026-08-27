@@ -6,6 +6,7 @@
 
 const express = require('express');
 const cors    = require('cors');
+const path    = require('path');
 
 const app    = express();
 const PUERTO = 3000;
@@ -35,6 +36,16 @@ app.get('/api/estado', (req, res) => {
   res.json({ estado: 'ok', mensaje: 'Servidor de Horarios activo' });
 });
 
+// ── Archivos estáticos del frontend ──────────────────────────
+// Sirve index.html, dashboard.html, css/, js/, modulos/ etc.
+// desde la carpeta raíz del proyecto (un nivel arriba de /server)
+app.use(express.static(path.join(__dirname, '..')));
+
+// ── Ruta raíz: redirige al login ──────────────────────────────
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
 // ── Manejo de rutas no encontradas ───────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });
@@ -45,7 +56,8 @@ app.listen(PUERTO, () => {
   console.log('');
   console.log('================================================');
   console.log('  Sistema de Armado de Horarios — API Local');
-  console.log(`  http://localhost:${PUERTO}`);
+  console.log(`  Aplicación:  http://localhost:${PUERTO}`);
+  console.log(`  Dashboard:   http://localhost:${PUERTO}/dashboard.html`);
   console.log('================================================');
   console.log('');
 });

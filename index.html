@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sistema de Armado de Horarios — Iniciar sesión" />
+  <title>Iniciar Sesión — Sistema de Horarios</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg-1:      #0b0e1a;
+      --color-bg-2:      #111827;
+      --color-accent:    #6366f1;
+      --color-accent-h:  #818cf8;
+      --color-glass-bg:  rgba(255,255,255,0.04);
+      --color-glass-bdr: rgba(255,255,255,0.10);
+      --color-text:      #f1f5f9;
+      --color-text-muted:#94a3b8;
+      --color-error-bg:  rgba(239,68,68,0.12);
+      --color-error-bdr: rgba(239,68,68,0.35);
+      --color-error-txt: #fca5a5;
+      --radius:          14px;
+      --transition:      0.25s ease;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--color-bg-1);
+      color: var(--color-text);
+    }
+
+    /* ── Fondo animado ── */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%,  rgba(99,102,241,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%,  rgba(139,92,246,0.14) 0%, transparent 55%),
+        var(--color-bg-1);
+    }
+
+    /* ── Orbes de fondo ── */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-orb-1 {
+      width: 500px; height: 500px;
+      top: -150px; left: -150px;
+      background: rgba(99,102,241,0.12);
+      animation: orbFloat 12s ease-in-out infinite;
+    }
+    .bg-orb-2 {
+      width: 400px; height: 400px;
+      bottom: -120px; right: -120px;
+      background: rgba(139,92,246,0.10);
+      animation: orbFloat 16s ease-in-out infinite reverse;
+    }
+
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50%       { transform: translate(30px, -30px) scale(1.06); }
+    }
+
+    /* ── Tarjeta de login ── */
+    .login-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      margin: 1rem;
+      padding: 2.5rem 2.25rem;
+      background: var(--color-glass-bg);
+      border: 1px solid var(--color-glass-bdr);
+      border-radius: var(--radius);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow:
+        0 4px 24px rgba(0,0,0,0.35),
+        inset 0 1px 0 rgba(255,255,255,0.07);
+      animation: cardIn 0.55s cubic-bezier(.22,.68,0,1.2) both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* ── Logo / encabezado ── */
+    .login-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .login-logo-icon {
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--color-accent), #7c3aed);
+      border-radius: 12px;
+      font-size: 1.4rem;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.40);
+    }
+
+    .login-logo-text h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.2;
+    }
+
+    .login-logo-text span {
+      font-size: .75rem;
+      color: var(--color-text-muted);
+      font-weight: 400;
+    }
+
+    /* ── Separador ── */
+    .login-divider {
+      height: 1px;
+      background: var(--color-glass-bdr);
+      margin-bottom: 1.75rem;
+    }
+
+    /* ── Etiqueta de campo ── */
+    .field-label {
+      display: block;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: .5rem;
+    }
+
+    /* ── Grupo de input con ícono ── */
+    .input-group {
+      position: relative;
+      margin-bottom: 1.1rem;
+    }
+
+    .input-group i.input-icon {
+      position: absolute;
+      left: .95rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-text-muted);
+      font-size: .9rem;
+      pointer-events: none;
+      transition: color var(--transition);
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: .75rem .95rem .75rem 2.6rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--color-glass-bdr);
+      border-radius: 9px;
+      color: var(--color-text);
+      font-size: .95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    .input-group input:focus {
+      background: rgba(255,255,255,0.07);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.20);
+    }
+
+    .input-group input:focus + i.input-icon,
+    .input-group input:focus ~ i.input-icon {
+      color: var(--color-accent-h);
+    }
+
+    .input-group input::placeholder {
+      color: rgba(148,163,184,0.45);
+    }
+
+    /* Ícono ojo (toggle contraseña) */
+    .toggle-pass {
+      position: absolute;
+      right: .95rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      font-size: .9rem;
+      padding: .25rem;
+      transition: color var(--transition);
+    }
+    .toggle-pass:hover { color: var(--color-accent-h); }
+
+    /* ── Mensaje de error ── */
+    .login-error {
+      display: none;
+      align-items: center;
+      gap: .6rem;
+      padding: .7rem 1rem;
+      background: var(--color-error-bg);
+      border: 1px solid var(--color-error-bdr);
+      border-radius: 8px;
+      color: var(--color-error-txt);
+      font-size: .85rem;
+      margin-bottom: 1.1rem;
+      animation: shake .35s ease;
+    }
+    .login-error.visible { display: flex; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25%       { transform: translateX(-6px); }
+      75%       { transform: translateX(6px); }
+    }
+
+    /* ── Botón de submit ── */
+    .btn-login {
+      width: 100%;
+      padding: .8rem 1rem;
+      background: linear-gradient(135deg, var(--color-accent), #7c3aed);
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      font-size: .97rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+      box-shadow: 0 4px 18px rgba(99,102,241,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .55rem;
+      letter-spacing: .01em;
+    }
+
+    .btn-login:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(99,102,241,0.50);
+    }
+
+    .btn-login:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-login:disabled {
+      opacity: .65;
+      cursor: not-allowed;
+    }
+
+    .btn-login .spinner {
+      display: none;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    .btn-login.loading .spinner { display: block; }
+    .btn-login.loading .btn-text { display: none; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Pie de tarjeta ── */
+    .login-footer {
+      margin-top: 1.5rem;
+      text-align: center;
+      font-size: .75rem;
+      color: var(--color-text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Orbes decorativos de fondo -->
+  <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+
+  <!-- Tarjeta de login -->
+  <main class="login-card" role="main">
+
+    <!-- Logo -->
+    <div class="login-logo">
+      <div class="login-logo-icon" aria-hidden="true">
+        <i class="fa-solid fa-calendar-days"></i>
+      </div>
+      <div class="login-logo-text">
+        <h1>Sistema de Horarios</h1>
+        <span>Liceo — Gestión Académica</span>
+      </div>
+    </div>
+
+    <div class="login-divider" aria-hidden="true"></div>
+
+    <!-- Formulario -->
+    <form id="form-login" novalidate autocomplete="off">
+
+      <!-- Usuario -->
+      <div>
+        <label class="field-label" for="input-usuario">Usuario</label>
+        <div class="input-group">
+          <input
+            id="input-usuario"
+            type="text"
+            placeholder="Ingresá tu usuario"
+            autocomplete="username"
+            spellcheck="false"
+            required
+          />
+          <i class="fa-solid fa-user input-icon" aria-hidden="true"></i>
+        </div>
+      </div>
+
+      <!-- Contraseña -->
+      <div>
+        <label class="field-label" for="input-password">Contraseña</label>
+        <div class="input-group">
+          <input
+            id="input-password"
+            type="password"
+            placeholder="Ingresá tu contraseña"
+            autocomplete="current-password"
+            required
+          />
+          <i class="fa-solid fa-lock input-icon" aria-hidden="true"></i>
+          <button
+            type="button"
+            class="toggle-pass"
+            id="btn-toggle-pass"
+            aria-label="Mostrar/ocultar contraseña"
+            title="Mostrar/ocultar contraseña"
+          >
+            <i class="fa-solid fa-eye" id="icon-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="login-error" id="login-error" role="alert" aria-live="polite">
+        <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+        <span id="login-error-msg">Usuario o contraseña incorrectos.</span>
+      </div>
+
+      <!-- Botón -->
+      <button type="submit" class="btn-login" id="btn-submit">
+        <div class="spinner" aria-hidden="true"></div>
+        <span class="btn-text">
+          <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i>
+          Ingresar
+        </span>
+      </button>
+
+    </form>
+
+    <p class="login-footer">
+      <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+      Acceso restringido al personal autorizado
+    </p>
+
+  </main>
+
+  <!-- Lógica de autenticación -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>

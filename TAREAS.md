@@ -66,58 +66,58 @@
 
 ## 🔐 FASE 4 — Autenticación
 
-- [ ] Crear pantalla de login (`index.html`)
-- [ ] Validar credenciales fijas: `Admin` / `905011_Yo`
-- [ ] Redirigir al dashboard tras login exitoso
-- [ ] Proteger navegación si no está autenticado (verificación en `app.js`)
-- [ ] Implementar botón de logout
+- [x] Crear pantalla de login (`index.html`)
+- [x] Validar credenciales fijas: `Admin` / `905011_Yo`
+- [x] Redirigir al dashboard tras login exitoso
+- [x] Proteger navegación si no está autenticado (verificación en `app.js`)
+- [x] Implementar botón de logout
 
 ---
 
 ## 🎨 FASE 5 — Frontend / Diseño Visual
 
-- [ ] Crear `css/estilos.css` con el sistema de diseño base
-  - [ ] Variables CSS (colores, tipografía, espaciado)
-  - [ ] Tema oscuro como base
-  - [ ] Glassmorphism (fondo difuminado, bordes sutiles)
-  - [ ] Sombras suaves
-  - [ ] Tipografía (Inter o similar desde Google Fonts)
-- [ ] Crear `css/dashboard.css`
-- [ ] Crear `css/formularios.css`
-- [ ] Crear `css/horario.css`
-- [ ] Definir paleta de colores de estados:
-  - [ ] 🟢 Verde — Disponible
-  - [ ] 🔴 Rojo — Ocupado en otra institución
-  - [ ] 🔵 Azul — Ocupado en el liceo
-  - [ ] ⚫ Gris — Celda vacía
-  - [ ] 🟡 Amarillo — Advertencia
-- [ ] Integrar Font Awesome para iconografía
-- [ ] Crear `js/ui.js` con funciones de renderizado reutilizables
+- [x] Crear `css/estilos.css` con el sistema de diseño base
+  - [x] Variables CSS (colores, tipografía, espaciado)
+  - [x] Tema oscuro como base
+  - [x] Glassmorphism (fondo difuminado, bordes sutiles)
+  - [x] Sombras suaves
+  - [x] Tipografía (Inter o similar desde Google Fonts)
+- [x] Crear `css/dashboard.css`
+- [x] Crear `css/formularios.css`
+- [x] Crear `css/horario.css`
+- [x] Definir paleta de colores de estados:
+  - [x] 🟢 Verde — Disponible
+  - [x] 🔴 Rojo — Ocupado en otra institución
+  - [x] 🔵 Azul — Ocupado en el liceo
+  - [x] ⚫ Gris — Celda vacía
+  - [x] 🟡 Amarillo — Advertencia
+- [x] Integrar Font Awesome para iconografía
+- [x] Crear `js/ui.js` con funciones de renderizado reutilizables
 
 ---
 
 ## 📋 FASE 6 — Módulos CRUD
 
 ### Niveles
-- [ ] Listar niveles
-- [ ] Crear nivel
-- [ ] Editar nivel
-- [ ] Eliminar nivel (con advertencia si tiene grupos asociados)
+- [x] Listar niveles
+- [x] Crear nivel
+- [x] Editar nivel
+- [x] Eliminar nivel (con advertencia si tiene grupos asociados)
 
 ### Turnos y Horarios de Turno
-- [ ] Listar turnos
-- [ ] Crear / editar / eliminar turno
-- [ ] Configurar horas por turno (número, hora inicio, hora fin)
+- [x] Listar turnos
+- [x] Crear / editar / eliminar turno
+- [x] Configurar horas por turno (número, hora inicio, hora fin)
 
 ### Grupos
-- [ ] Listar grupos (con nivel y turno)
-- [ ] Crear grupo (nivel + turno + número)
-- [ ] Editar / eliminar grupo
+- [x] Listar grupos (con nivel y turno)
+- [x] Crear grupo (nivel + turno + número)
+- [x] Editar / eliminar grupo
 
 ### Asignaturas
-- [ ] Listar asignaturas por nivel
-- [ ] Crear asignatura (nombre + nivel + carga horaria)
-- [ ] Editar / eliminar asignatura
+- [x] Listar asignaturas por nivel
+- [x] Crear asignatura (nombre + nivel + carga horaria)
+- [x] Editar / eliminar asignatura
 
 ### Docentes
 - [ ] Listar docentes
@@ -180,4 +180,5 @@
 ---
 
 **Total de tareas principales:** 70+  
-**Estado general del proyecto:** 🔴 No iniciado
+**Estado general del proyecto:** 🟡 En progreso — Fases 1–5 completadas
+

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sistema de Armado de Horarios — Panel principal" />
+  <title>Dashboard — Sistema de Horarios</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Estilos del proyecto — Fase 5 -->
+  <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/formularios.css" />
+  <link rel="stylesheet" href="css/horario.css" />
+
+
+</head>
+<body>
+
+  <div class="app-layout">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon" aria-hidden="true">
+          <i class="fa-solid fa-calendar-days"></i>
+        </div>
+        <div>
+          <div class="sidebar-brand-name">Horarios</div>
+          <div class="sidebar-brand-sub">Gestión Académica</div>
+        </div>
+      </div>
+
+      <!-- Navegación -->
+      <nav class="sidebar-nav" aria-label="Navegación principal">
+
+        <div class="nav-section-label">Configuración</div>
+
+        <button class="nav-item active" id="nav-niveles" data-modulo="niveles" onclick="App.navegarA('niveles')">
+          <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+          Niveles
+        </button>
+
+        <button class="nav-item" id="nav-turnos" data-modulo="turnos" onclick="App.navegarA('turnos')">
+          <i class="fa-solid fa-clock" aria-hidden="true"></i>
+          Turnos y Horarios
+        </button>
+
+        <button class="nav-item" id="nav-grupos" data-modulo="grupos" onclick="App.navegarA('grupos')">
+          <i class="fa-solid fa-users" aria-hidden="true"></i>
+          Grupos
+        </button>
+
+        <button class="nav-item" id="nav-asignaturas" data-modulo="asignaturas" onclick="App.navegarA('asignaturas')">
+          <i class="fa-solid fa-book" aria-hidden="true"></i>
+          Asignaturas
+        </button>
+
+        <div class="nav-section-label" style="margin-top:.5rem">Docentes</div>
+
+        <button class="nav-item" id="nav-docentes" data-modulo="docentes" onclick="App.navegarA('docentes')">
+          <i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i>
+          Docentes
+        </button>
+
+        <button class="nav-item" id="nav-disponibilidad" data-modulo="disponibilidad" onclick="App.navegarA('disponibilidad')">
+          <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+          Disponibilidad
+        </button>
+
+        <div class="nav-section-label" style="margin-top:.5rem">Armado</div>
+
+        <button class="nav-item" id="nav-armado" data-modulo="armado" onclick="App.navegarA('armado')">
+          <i class="fa-solid fa-table-cells" aria-hidden="true"></i>
+          Armar Horarios
+        </button>
+
+      </nav>
+
+      <!-- Footer: usuario + logout -->
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" aria-hidden="true">
+            <i class="fa-solid fa-user-tie"></i>
+          </div>
+          <div>
+            <div class="user-name" id="sidebar-username">Admin</div>
+            <div class="user-role">Administrador</div>
+          </div>
+        </div>
+        <button class="btn-logout" id="btn-logout" onclick="App.logout()" aria-label="Cerrar sesión">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+          Cerrar sesión
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- ── Área principal ── -->
+    <div class="main-area">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <span class="topbar-title" id="topbar-titulo">Niveles</span>
+        <div class="topbar-server-status">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-label">Servidor conectado</span>
+        </div>
+      </header>
+
+      <!-- Contenido dinámico de módulos -->
+      <div class="content-area">
+        <div id="modulo-contenido">
+          <div class="welcome-placeholder">
+            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+            <h2>Bienvenido al Sistema de Horarios</h2>
+            <p>Seleccioná un módulo del menú lateral para comenzar a trabajar.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/app.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="modulos/niveles.js"></script>
+  <script src="modulos/horarios.js"></script>
+  <script src="modulos/grupos.js"></script>
+  <script src="modulos/asignaturas.js"></script>
+  <script src="modulos/docentes.js"></script>
+  <script src="modulos/disponibilidad.js"></script>
+  <script src="modulos/armado.js"></script>
+
+  <script>
+    // Inicializar dashboard: verificar auth y estado del servidor
+    document.addEventListener('DOMContentLoaded', () => {
+      App.init();
+      App.verificarServidor();
+    });
+  </script>
+
+</body>
+</html>
