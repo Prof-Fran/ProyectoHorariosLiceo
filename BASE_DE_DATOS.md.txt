@@ -136,15 +136,17 @@ Un docente puede impartir varias asignaturas.
 Cada asignatura puede tener varios docentes.
 Campos
 id
-id_docente
-id_asignatura
-grado (del 1 al 7)
-puntaje (por ejemplo 114.20)
-Restricciones
-grado BETWEEN 1 AND 7
-puntaje >= 0
-UNIQUE
-(id_docente, id_asignatura)
+  id_docente
+  id_asignatura
+  grado (del 1 al 7)
+  puntaje (por ejemplo 114.20)
+  efectivo (TRUE si el docente es efectivo en esa asignatura, FALSE si no)
+  Restricciones
+  grado BETWEEN 1 AND 7
+  puntaje >= 0
+  efectivo por defecto FALSE
+  UNIQUE
+  (id_docente, id_asignatura)
 
 Tabla: grupo_asignatura
 Indica qué asignaturas posee cada grupo.
@@ -286,9 +288,11 @@ Nunca podrá existir un tercer registro para la misma combinación:
 grupo + día + hora.
 
 Regla 10
-Los docentes deberán visualizarse ordenados automáticamente utilizando:
+Los docentes deberán visualizarse ordenados automáticamente.
+Primero se listan los docentes efectivos (efectivo = TRUE) y luego los no efectivos.
+Dentro de cada grupo se ordenan por:
 Grado (descendente)
-Puntaje (descendente)
+Puntaje (descendente, para desempatar)
 Este orden se calculará mediante una consulta SQL sobre la tabla docente_asignatura, sin almacenar un orden fijo.
 
 Regla 11

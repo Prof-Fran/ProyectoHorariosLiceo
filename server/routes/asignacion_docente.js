@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
              n.nombre AS nivel_nombre, t.nombre AS turno_nombre,
              a.nombre AS asignatura_nombre,
              d.nombre AS docente_nombre, d.apellido AS docente_apellido,
-             da.grado, da.puntaje
+             da.grado, da.puntaje, da.efectivo
       FROM asignacion_docente ad
       JOIN grupos              g  ON g.id  = ad.id_grupo
       JOIN niveles             n  ON n.id  = g.id_nivel
@@ -38,7 +38,7 @@ router.get('/por_grupo/:id_grupo', async (req, res) => {
     const resultado = await db.query(`
       SELECT ad.*, a.nombre AS asignatura_nombre,
              d.nombre AS docente_nombre, d.apellido AS docente_apellido,
-             da.grado, da.puntaje
+             da.grado, da.puntaje, da.efectivo
       FROM asignacion_docente ad
       JOIN asignaturas        a  ON a.id  = ad.id_asignatura
       JOIN docente_asignatura da ON da.id = ad.id_docente_asignatura

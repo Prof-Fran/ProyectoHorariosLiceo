@@ -41,7 +41,7 @@ router.get('/:id/asignaturas', async (req, res) => {
       JOIN asignaturas a ON a.id = da.id_asignatura
       JOIN niveles     n ON n.id = a.id_nivel
       WHERE da.id_docente = $1
-      ORDER BY da.grado DESC, da.puntaje DESC
+      ORDER BY da.efectivo DESC, da.grado DESC, da.puntaje DESC
     `, [id]);
     res.json(resultado.rows);
   } catch (error) {

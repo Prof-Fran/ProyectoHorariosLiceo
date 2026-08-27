@@ -120,16 +120,16 @@
 - [x] Editar / eliminar asignatura
 
 ### Docentes
-- [ ] Listar docentes
-- [ ] Crear docente (nombre, apellido, cédula)
-- [ ] Editar / eliminar docente
-- [ ] Asignar asignaturas al docente (con grado 1–7 y puntaje)
-- [ ] Ver asignaturas asignadas a un docente
+- [x] Listar docentes
+- [x] Crear docente (nombre, apellido, cédula)
+- [x] Editar / eliminar docente
+- [x] Asignar asignaturas al docente (con grado 1–7 y puntaje)
+- [x] Ver asignaturas asignadas a un docente
 
 ### Disponibilidad Docente
-- [ ] Grilla semanal (lunes–viernes × horas del turno) por docente
-- [ ] Marcar/desmarcar horas ocupadas en otras instituciones
-- [ ] Guardar automáticamente sin botón de guardar
+- [x] Grilla semanal (lunes–viernes × horas del turno) por docente
+- [x] Marcar/desmarcar horas ocupadas en otras instituciones
+- [x] Botón de confirmar para guardar los cambios en la base de datos
 
 ---
 
@@ -180,5 +180,5 @@
 ---
 
 **Total de tareas principales:** 70+  
-**Estado general del proyecto:** 🟡 En progreso — Fases 1–5 completadas
+**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas
 

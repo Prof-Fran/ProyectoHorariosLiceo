@@ -99,6 +99,9 @@ CREATE TABLE docentes (
 -- Cada asignatura puede tener varios docentes
 -- grado: del 1 al 7 (eficacia del docente en esa asignatura)
 -- puntaje: puntaje acumulado del docente (ej. 114.20)
+-- efectivo: indica si el docente es efectivo en esa asignatura (BOOL)
+--   Los efectivos se ordenan primero (por grado y puntaje),
+--   y luego los no efectivos (por grado y puntaje).
 -- ============================================================
 CREATE TABLE docente_asignatura (
     id            SERIAL PRIMARY KEY,
@@ -106,6 +109,7 @@ CREATE TABLE docente_asignatura (
     id_asignatura INTEGER        NOT NULL REFERENCES asignaturas(id) ON DELETE CASCADE,
     grado         INTEGER        NOT NULL CHECK (grado BETWEEN 1 AND 7),
     puntaje       NUMERIC(10, 2) NOT NULL CHECK (puntaje >= 0),
+    efectivo      BOOLEAN        NOT NULL DEFAULT FALSE,
     UNIQUE (id_docente, id_asignatura)
 );
 

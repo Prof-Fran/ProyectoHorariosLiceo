@@ -428,6 +428,12 @@ html, body {
   border-color: var(--accent-border);
 }
 
+.badge-efectivo {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-color: var(--success-border);
+}
+
 /* ── Spinner de carga ───────────────────────────────────────── */
 .spinner {
   width: 22px;

@@ -80,6 +80,28 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/disponibilidad/upsert — Crear o actualizar (usado desde la grilla)
+// Body: { id_docente, dia_semana, numero_hora, ocupado }
+// Debe definirse ANTES de la ruta PUT /:id para que la coincida correctamente
+router.put('/upsert', async (req, res) => {
+  try {
+    const { id_docente, dia_semana, numero_hora, ocupado } = req.body;
+    if (!id_docente || !dia_semana || !numero_hora || ocupado === undefined) {
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    }
+    const resultado = await db.query(`
+      INSERT INTO disponibilidad_docente (id_docente, dia_semana, numero_hora, ocupado)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (id_docente, dia_semana, numero_hora)
+      DO UPDATE SET ocupado = EXCLUDED.ocupado
+      RETURNING *
+    `, [id_docente, dia_semana, numero_hora, ocupado]);
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar disponibilidad' });
+  }
+});
+
 // PUT /api/disponibilidad/:id — Actualizar estado de un bloque
 router.put('/:id', async (req, res) => {
   try {
@@ -94,27 +116,6 @@ router.put('/:id', async (req, res) => {
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Registro no encontrado' });
     }
-    res.json(resultado.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar disponibilidad' });
-  }
-});
-
-// PUT /api/disponibilidad/upsert — Crear o actualizar (usado desde la grilla)
-// Body: { id_docente, dia_semana, numero_hora, ocupado }
-router.put('/upsert', async (req, res) => {
-  try {
-    const { id_docente, dia_semana, numero_hora, ocupado } = req.body;
-    if (!id_docente || !dia_semana || !numero_hora || ocupado === undefined) {
-      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-    }
-    const resultado = await db.query(`
-      INSERT INTO disponibilidad_docente (id_docente, dia_semana, numero_hora, ocupado)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (id_docente, dia_semana, numero_hora)
-      DO UPDATE SET ocupado = EXCLUDED.ocupado
-      RETURNING *
-    `, [id_docente, dia_semana, numero_hora, ocupado]);
     res.json(resultado.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar disponibilidad' });

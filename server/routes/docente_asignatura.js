@@ -1,6 +1,6 @@
 // ============================================================
 // routes/docente_asignatura.js
-// Relación docente ↔ asignatura (grado y puntaje)
+// Relación docente ↔ asignatura (grado, puntaje y efectivo)
 // ============================================================
 
 const express = require('express');
@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
       JOIN docentes    d ON d.id = da.id_docente
       JOIN asignaturas a ON a.id = da.id_asignatura
       JOIN niveles     n ON n.id = a.id_nivel
-      ORDER BY da.grado DESC, da.puntaje DESC
+      ORDER BY da.efectivo DESC, da.grado DESC, da.puntaje DESC
     `);
     res.json(resultado.rows);
   } catch (error) {
@@ -37,7 +37,7 @@ router.get('/por_asignatura/:id_asignatura', async (req, res) => {
       JOIN asignaturas a ON a.id = da.id_asignatura
       JOIN niveles     n ON n.id = a.id_nivel
       WHERE da.id_asignatura = $1
-      ORDER BY da.grado DESC, da.puntaje DESC
+      ORDER BY da.efectivo DESC, da.grado DESC, da.puntaje DESC
     `, [id_asignatura]);
     res.json(resultado.rows);
   } catch (error) {
@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/docente_asignatura — Asignar asignatura a docente
 router.post('/', async (req, res) => {
   try {
-    const { id_docente, id_asignatura, grado, puntaje } = req.body;
+    const { id_docente, id_asignatura, grado, puntaje, efectivo } = req.body;
     if (!id_docente || !id_asignatura || grado === undefined || puntaje === undefined) {
       return res.status(400).json({ error: 'id_docente, id_asignatura, grado y puntaje son obligatorios' });
     }
@@ -80,9 +80,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'El puntaje no puede ser negativo' });
     }
     const resultado = await db.query(`
-      INSERT INTO docente_asignatura (id_docente, id_asignatura, grado, puntaje)
-      VALUES ($1, $2, $3, $4) RETURNING *
-    `, [id_docente, id_asignatura, grado, puntaje]);
+      INSERT INTO docente_asignatura (id_docente, id_asignatura, grado, puntaje, efectivo)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `, [id_docente, id_asignatura, grado, puntaje, efectivo === true]);
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
     if (error.code === '23505') {
@@ -92,11 +92,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/docente_asignatura/:id — Actualizar grado y puntaje
+// PUT /api/docente_asignatura/:id — Actualizar grado, puntaje y efectivo
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { grado, puntaje } = req.body;
+    const { grado, puntaje, efectivo } = req.body;
     if (grado === undefined || puntaje === undefined) {
       return res.status(400).json({ error: 'grado y puntaje son obligatorios' });
     }
@@ -107,9 +107,9 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'El puntaje no puede ser negativo' });
     }
     const resultado = await db.query(`
-      UPDATE docente_asignatura SET grado = $1, puntaje = $2
-      WHERE id = $3 RETURNING *
-    `, [grado, puntaje, id]);
+      UPDATE docente_asignatura SET grado = $1, puntaje = $2, efectivo = $3
+      WHERE id = $4 RETURNING *
+    `, [grado, puntaje, efectivo === true, id]);
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Registro no encontrado' });
     }

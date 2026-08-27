@@ -6,8 +6,10 @@
 
 -- ============================================================
 -- Vista: vista_docentes_por_asignatura
--- Lista todos los docentes con sus asignaturas,
--- ordenados por grado (desc) y puntaje (desc)
+-- Lista todos los docentes con sus asignaturas.
+-- Orden: primero los efectivos, luego los no efectivos.
+-- Dentro de cada grupo (efectivo/no efectivo) se ordenan
+-- por grado (desc) y para desempatar por puntaje (desc).
 -- Usada en el panel derecho del armado de horarios
 -- ============================================================
 CREATE OR REPLACE VIEW vista_docentes_por_asignatura AS
@@ -23,12 +25,13 @@ SELECT
     a.id_nivel           AS id_nivel,
     n.nombre             AS nivel_nombre,
     da.grado             AS grado,
-    da.puntaje           AS puntaje
+    da.puntaje           AS puntaje,
+    da.efectivo          AS efectivo
 FROM docente_asignatura da
 JOIN docentes    d ON d.id = da.id_docente
 JOIN asignaturas a ON a.id = da.id_asignatura
 JOIN niveles     n ON n.id = a.id_nivel
-ORDER BY da.grado DESC, da.puntaje DESC;
+ORDER BY da.efectivo DESC, da.grado DESC, da.puntaje DESC;
 
 -- ============================================================
 -- Vista: vista_horas_grupo
@@ -53,7 +56,8 @@ SELECT
     d.nombre                                    AS docente_nombre,
     d.apellido                                  AS docente_apellido,
     da.grado                                    AS docente_grado,
-    da.puntaje                                  AS docente_puntaje
+    da.puntaje                                  AS docente_puntaje,
+    da.efectivo                                 AS docente_efectivo
 FROM grupo_asignatura ga
 JOIN grupos      g  ON g.id  = ga.id_grupo
 JOIN niveles     n  ON n.id  = g.id_nivel
@@ -66,7 +70,7 @@ LEFT JOIN horario_grupo       hg ON hg.id_grupo = g.id AND hg.id_grupo_docente =
 GROUP BY
     g.id, n.nombre, t.nombre, g.numero,
     a.id, a.nombre, a.carga_horaria,
-    ad.id, da.id, d.id, d.nombre, d.apellido, da.grado, da.puntaje
+    ad.id, da.id, d.id, d.nombre, d.apellido, da.grado, da.puntaje, da.efectivo
 ORDER BY n.nombre, g.numero, a.nombre;
 
 -- ============================================================
