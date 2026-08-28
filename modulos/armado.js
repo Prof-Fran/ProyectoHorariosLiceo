@@ -646,6 +646,10 @@ window.Modulo_armado = (() => {
             <i class="fa-solid fa-file-excel" style="color:#22c55e;" aria-hidden="true"></i>
             Exportar Horario
           </button>
+          <button class="btn btn-secondary btn-sm" id="armado-btn-exportar-pdf" title="Imprimir o guardar en PDF el horario del grupo">
+            <i class="fa-solid fa-file-pdf" style="color:#ef4444;" aria-hidden="true"></i>
+            Exportar a PDF
+          </button>
           <div class="grupo-horas-resumen">
             <div class="hora-stat">
               <span class="hora-stat-valor" id="armado-horas-asignadas">${totalHoras}</span>
@@ -902,6 +906,9 @@ window.Modulo_armado = (() => {
 
     // Botón exportar horario a Excel / Google Sheets
     document.getElementById('armado-btn-exportar')?.addEventListener('click', _exportarHorarioGrupo);
+
+    // Botón exportar horario a PDF
+    document.getElementById('armado-btn-exportar-pdf')?.addEventListener('click', _imprimirHorarioGrupo);
 
     // Botón administrar docentes
     document.getElementById('armado-btn-admin-docentes')?.addEventListener('click', () => {
@@ -1549,6 +1556,261 @@ window.Modulo_armado = (() => {
     } catch (error) {
       console.error('Error al exportar horario a Excel:', error);
       UI.mostrarToast('Ocurrió un error al generar el archivo Excel.', 'error');
+    }
+  }
+
+  function _imprimirHorarioGrupo() {
+    if (!_grupoActual) {
+      UI.mostrarToast('No hay ningún grupo seleccionado para exportar.', 'warning');
+      return;
+    }
+
+    try {
+      const g = _grupoActual;
+      const nombreGrupo = `${g.nivel_nombre || ''}${g.numero || ''}`;
+      const nombreTurno = g.turno_nombre || '';
+
+      const horasOrdenadas = [..._horasTurno].sort((a, b) => a.numero_hora - b.numero_hora);
+
+      const thead = `
+        <tr>
+          <th style="width:16%;">Hora</th>
+          ${DIAS.map(d => `<th>${_esc(d)}</th>`).join('')}
+        </tr>
+      `;
+
+      const tbody = horasOrdenadas.map(hora => {
+        const etiqueta = `${hora.numero_hora}° Hora`;
+        const rango = `${_esc(hora.hora_inicio || '')} - ${_esc(hora.hora_fin || '')}`;
+
+        const celdas = DIAS.map((d, idxDia) => {
+          const diaSemana = idxDia + 1;
+          const asignaciones = _obtenerAsignacionesCelda(diaSemana, hora.numero_hora);
+
+          if (asignaciones.length === 0) {
+            return `<td class="celda-libre"></td>`;
+          }
+
+          if (asignaciones.length === 1) {
+            const a = asignaciones[0];
+            return `
+              <td class="celda-asignada">
+                <strong>${_esc(a.asignatura_nombre)}</strong>
+                <br><span style="font-size:8.5pt;color:#475569;">Prof. ${_esc(a.docente_apellido)}, ${_esc(a.docente_nombre)}</span>
+              </td>
+            `;
+          }
+
+          // Dupla
+          return `
+            <td class="celda-dupla">
+              <div style="font-size:7.5pt;font-weight:700;color:#854d0e;margin-bottom:3px;">[DUPLA]</div>
+              ${asignaciones.map(a => `
+                <div style="margin-bottom:3px;border-bottom:1px solid #e2e8f0;padding-bottom:3px;">
+                  <strong>${_esc(a.asignatura_nombre)}</strong>
+                  <br><span style="font-size:8pt;color:#475569;">Prof. ${_esc(a.docente_apellido)}</span>
+                </div>
+              `).join('')}
+            </td>
+          `;
+        }).join('');
+
+        return `
+          <tr>
+            <td class="col-hora">
+              <strong>${_esc(etiqueta)}</strong>
+              <br><span style="font-size:8pt;color:#64748b;">${rango}</span>
+            </td>
+            ${celdas}
+          </tr>
+        `;
+      }).join('');
+
+      // Calcular cantidad de docentes distintos
+      const docentesUnicos = new Set(_horarioGrupo.map(h => h.id_docente));
+
+      const tablasHTML = `
+        <div class="print-turno-box">
+          <table>
+            <thead>${thead}</thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>
+      `;
+
+      const ventanaImpresion = window.open('', '_blank');
+      if (!ventanaImpresion) {
+        UI.mostrarToast('El navegador bloqueó la ventana de impresión. Habilitá las ventanas emergentes.', 'error');
+        return;
+      }
+
+      ventanaImpresion.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Horario — ${nombreGrupo}</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #fff;
+      margin: 0;
+      padding: 0;
+      font-size: 10pt;
+      line-height: 1.3;
+    }
+    .print-header {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .print-title {
+      font-size: 14pt;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 3px 0;
+      color: #0f172a;
+    }
+    .print-sub {
+      font-size: 9pt;
+      color: #475569;
+      margin: 0;
+    }
+    .print-grupo-info {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 9.5pt;
+    }
+    .print-grupo-nombre {
+      font-weight: 700;
+      color: #1e293b;
+      font-size: 11pt;
+    }
+    .print-turno-box {
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 6px;
+      font-size: 8.5pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: center;
+      vertical-align: middle;
+      width: 16.8%;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      font-size: 8pt;
+      letter-spacing: 0.03em;
+    }
+    .col-hora {
+      font-weight: 600;
+      width: 16%;
+      background: #f8fafc;
+      text-align: left;
+    }
+    .celda-asignada {
+      background: #eef2ff !important;
+      color: #3730a3 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .celda-dupla {
+      background: #fefce8 !important;
+      color: #854d0e !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .celda-dupla > div:last-child {
+      border-bottom: none !important;
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+    }
+    .celda-libre {
+      color: #64748b;
+    }
+    .print-firmas {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 40px;
+      font-size: 9pt;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+    .linea-firma {
+      width: 180px;
+      border-top: 1px solid #64748b;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <div>
+      <h1 class="print-title">HORARIO SEMANAL DE CLASES</h1>
+      <p class="print-sub">Sistema de Gestión Académica y Horarios</p>
+    </div>
+    <div style="text-align:right;font-size:8.5pt;color:#64748b;">
+      Emitido el ${new Date().toLocaleDateString('es-UY')}
+    </div>
+  </div>
+
+  <div class="print-grupo-info">
+    <div>Grupo: <span class="print-grupo-nombre">${nombreGrupo}</span></div>
+    <div>Nivel: <strong>${_esc(g.nivel_nombre || 'S/D')}</strong></div>
+    <div>Turno: <strong>${nombreTurno}</strong></div>
+    <div>Horas Asignadas: <strong>${_horarioGrupo.length}</strong></div>
+    <div>Docentes: <strong>${docentesUnicos.size}</strong></div>
+  </div>
+
+  ${tablasHTML}
+
+  <div class="print-firmas">
+    <div>
+      <div class="linea-firma"></div>
+      <span>Firma Dirección / Administración</span>
+    </div>
+    <div>
+      <div class="linea-firma"></div>
+      <span>Firma Bedelía / Adscripto</span>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 250);
+    };
+  </script>
+</body>
+</html>`);
+      ventanaImpresion.document.close();
+
+    } catch (error) {
+      console.error('Error al generar vista de impresión:', error);
+      UI.mostrarToast('Ocurrió un error al preparar la impresión.', 'error');
     }
   }
 
