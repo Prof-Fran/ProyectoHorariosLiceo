@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // modulos/armado.js — Módulo Armado de Horarios
 // Fase 7.1 + 7.2 + 7.2B: Interfaz, Funcionalidad y Asignación a Grupo
 // Pantalla de selección de grupo, asignación de docentes,
@@ -1158,13 +1158,14 @@ window.Modulo_armado = (() => {
 
   async function _verificarConflictoExterno(idDocente, dia, hora) {
     try {
-      // Verificar disponibilidad del docente (otra institución)
-      const res = await fetch(`${App.API_BASE}/disponibilidad`);
+      if (!_grupoActual || !_grupoActual.id_turno) return null;
+
+      // Verificar disponibilidad del docente (otra institución en el turno del grupo actual)
+      const res = await fetch(`${App.API_BASE}/disponibilidad/por_docente_turno/${idDocente}/${_grupoActual.id_turno}`);
       if (!res.ok) return null;
 
       const disponibilidad = await res.json();
       const ocupado = disponibilidad.find(d =>
-        d.id_docente === idDocente &&
         d.dia_semana === dia &&
         d.numero_hora === hora &&
         d.ocupado === true
@@ -1174,14 +1175,6 @@ window.Modulo_armado = (() => {
         return 'El docente está ocupado en otra institución en ese horario.';
       }
 
-      // Verificar si está en otro grupo del liceo
-      const otroGrupo = _horarioGrupo.find(h =>
-        h.id_docente === idDocente &&
-        h.dia_semana === dia &&
-        h.numero_hora === hora
-      );
-
-      // No importa si es en el mismo grupo (lo estamos asignando)
       return null;
     } catch {
       return null;
