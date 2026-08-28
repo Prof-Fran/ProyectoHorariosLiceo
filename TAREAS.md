@@ -190,9 +190,9 @@
 
 - [x] Integrar SheetJS (librería Excel)
 - [x] Exportar horario de un grupo a `.xlsx`
-- [ ] Exportar horario de un docente a `.xlsx`
+- [x] Exportar horario de un docente a `.xlsx`
 - [ ] (Futuro) Exportar horario completo de la institución
-- [ ] (Futuro) Soporte para impresión / PDF
+- [x] Soporte para impresión / PDF (Horario y disponibilidad docente)
 
 ---
 
@@ -207,4 +207,4 @@
 ---
 
 **Total de tareas principales:** 70+  
-**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas, Fases 7.1-7.2-7.2B completadas, Fase 8 (Grupo .xlsx) completada
+**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas, Fases 7.1-7.2-7.2B completadas, Fase 8 (Grupo/Docente .xlsx y PDF) completada

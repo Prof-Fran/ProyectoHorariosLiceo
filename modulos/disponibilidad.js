@@ -57,20 +57,34 @@ window.Modulo_disponibilidad = (() => {
           'Gestioná los horarios en los que cada docente está ocupado en otras instituciones'
         )}
 
-        <!-- Selector único de docente -->
+        <!-- Selector único de docente y botones de exportación -->
         <div class="disp-selector-docente-box">
-          <div class="campo-grupo" style="max-width: 540px;">
-            <label class="campo-label" for="disp-select-docente">
-              <i class="fa-solid fa-user-check" style="color:var(--accent);margin-right:4px;"></i>
-              Seleccionar Docente
-            </label>
-            <div class="select-wrapper">
-              <i class="fa-solid fa-chalkboard-user input-icono-izq" aria-hidden="true"></i>
-              <select id="disp-select-docente" class="campo-select">
-                <option value="">— Cargando lista de docentes... —</option>
-              </select>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;">
+            <div class="campo-grupo" style="flex:1;min-width:280px;max-width:540px;margin-bottom:0;">
+              <label class="campo-label" for="disp-select-docente">
+                <i class="fa-solid fa-user-check" style="color:var(--accent);margin-right:4px;"></i>
+                Seleccionar Docente
+              </label>
+              <div class="select-wrapper">
+                <i class="fa-solid fa-chalkboard-user input-icono-izq" aria-hidden="true"></i>
+                <select id="disp-select-docente" class="campo-select">
+                  <option value="">— Cargando lista de docentes... —</option>
+                </select>
+              </div>
+              <span class="campo-ayuda">Elegí un docente para visualizar, editar y exportar sus horarios.</span>
             </div>
-            <span class="campo-ayuda">Elegí un docente para visualizar y editar sus horarios ocupados por turno.</span>
+
+            <!-- Acciones de Exportación (Fase 8) -->
+            <div class="disp-exportar-acciones" style="display:flex;gap:0.75rem;align-items:center;padding-bottom:4px;">
+              <button class="btn btn-secondary btn-sm" id="disp-btn-exportar-xlsx" disabled title="Exportar horario del docente a Excel / Google Sheets">
+                <i class="fa-solid fa-file-excel" style="color:#22c55e;" aria-hidden="true"></i>
+                Exportar Excel
+              </button>
+              <button class="btn btn-secondary btn-sm" id="disp-btn-exportar-pdf" disabled title="Imprimir o guardar en PDF el horario del docente">
+                <i class="fa-solid fa-file-pdf" style="color:#ef4444;" aria-hidden="true"></i>
+                Imprimir / PDF
+              </button>
+            </div>
           </div>
         </div>
 
@@ -95,6 +109,13 @@ window.Modulo_disponibilidad = (() => {
 
     document.getElementById('disp-select-docente')
       ?.addEventListener('change', _manejarCambioDocente);
+
+    // Botones de exportación (Fase 8)
+    document.getElementById('disp-btn-exportar-xlsx')
+      ?.addEventListener('click', _exportarDocenteExcel);
+
+    document.getElementById('disp-btn-exportar-pdf')
+      ?.addEventListener('click', _imprimirHorarioDocente);
 
     await _cargarDatosIniciales();
   }
@@ -292,6 +313,7 @@ window.Modulo_disponibilidad = (() => {
     if (!wrap) return;
 
     if (!_docenteId) {
+      _actualizarEstadoBotonesExportar(false);
       UI.renderizarVacio(
         wrap,
         'fa-solid fa-calendar-check',
@@ -301,6 +323,7 @@ window.Modulo_disponibilidad = (() => {
       return;
     }
 
+    _actualizarEstadoBotonesExportar(false);
     UI.mostrarCargando(wrap, 'Cargando disponibilidad del docente...');
 
     try {
@@ -341,8 +364,10 @@ window.Modulo_disponibilidad = (() => {
       });
 
       _renderizarContenedorTurnos();
+      _actualizarEstadoBotonesExportar(true);
 
     } catch (error) {
+      _actualizarEstadoBotonesExportar(false);
       UI.renderizarVacio(
         wrap,
         'fa-solid fa-triangle-exclamation',
@@ -350,6 +375,13 @@ window.Modulo_disponibilidad = (() => {
         UI.mensajeError(error)
       );
     }
+  }
+
+  function _actualizarEstadoBotonesExportar(habilitado) {
+    const btnXlsx = document.getElementById('disp-btn-exportar-xlsx');
+    const btnPdf  = document.getElementById('disp-btn-exportar-pdf');
+    if (btnXlsx) btnXlsx.disabled = !habilitado;
+    if (btnPdf)  btnPdf.disabled  = !habilitado;
   }
 
   /**
@@ -786,6 +818,403 @@ window.Modulo_disponibilidad = (() => {
       if (cambios.size > 0) {
         await _guardarTurno(idTurno);
       }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  EXPORTACIÓN A EXCEL / GOOGLE SHEETS (FASE 8)
+  // ════════════════════════════════════════════════════════════
+
+  function _exportarDocenteExcel() {
+    if (!_docenteId) {
+      UI.mostrarToast('Seleccioná un docente primero para exportar.', 'warning');
+      return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+      UI.mostrarToast('La librería de exportación no está disponible.', 'error');
+      return;
+    }
+
+    try {
+      const docente = _docentes.find(d => d.id === _docenteId);
+      if (!docente) return;
+
+      const wb = XLSX.utils.book_new();
+
+      // Ordenar turnos: Matutino primero, luego Vespertino, etc.
+      const turnosOrdenados = [..._turnos].sort((a, b) => {
+        const nomA = a.nombre.toLowerCase();
+        const nomB = b.nombre.toLowerCase();
+        if (nomA.includes('matutino')) return -1;
+        if (nomB.includes('matutino')) return 1;
+        if (nomA.includes('vespertino')) return -1;
+        if (nomB.includes('vespertino')) return 1;
+        return a.id - b.id;
+      });
+
+      let turnosConHoras = 0;
+
+      turnosOrdenados.forEach(turno => {
+        const horas = _horariosPorTurno.get(turno.id) || [];
+        if (horas.length === 0) return;
+
+        turnosConHoras++;
+        const estadoTurno     = _estadosPorTurno.get(turno.id);
+        const asigsLiceoTurno = _asignacionesLiceoPorTurno.get(turno.id) || new Map();
+
+        const filas = [];
+
+        // Encabezados institucionales
+        filas.push([`HORARIO DOCENTE — ${docente.apellido.toUpperCase()}, ${docente.nombre.toUpperCase()}`]);
+        filas.push([`C.I.: ${docente.cedula || 'S/D'} | Turno: ${turno.nombre} | Emitido: ${new Date().toLocaleDateString('es-UY')}`]);
+        filas.push([]);
+        filas.push(['HORA', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES']);
+
+        let totalHorasLiceo  = 0;
+        let totalHorasExt    = 0;
+        let totalHorasLibres = 0;
+
+        horas.forEach(h => {
+          const horaTexto = `${h.numero_hora}° (${_formatearHora(h.hora_inicio)} - ${_formatearHora(h.hora_fin)})`;
+          const filaHora = [horaTexto];
+
+          DIAS.forEach(d => {
+            const clave     = `${d.id}:${h.numero_hora}`;
+            const asigLiceo = asigsLiceoTurno.get(clave);
+            const ocupado   = estadoTurno ? estadoTurno.get(clave) === true : false;
+
+            if (asigLiceo) {
+              totalHorasLiceo++;
+              const infoMateria = asigLiceo.asignatura_nombre ? `\n${asigLiceo.asignatura_nombre}` : '';
+              filaHora.push(`Clase Liceo: ${asigLiceo.grupo_nombre}${infoMateria}`);
+            } else if (ocupado) {
+              totalHorasExt++;
+              filaHora.push('No disponible\n(Ocupado externo)');
+            } else {
+              totalHorasLibres++;
+              filaHora.push('Disponible');
+            }
+          });
+
+          filas.push(filaHora);
+        });
+
+        // Resumen al pie
+        filas.push([]);
+        filas.push(['RESUMEN DE HORAS:', `Clases en Liceo: ${totalHorasLiceo} hs`, `Ocupado Externo: ${totalHorasExt} hs`, `Disponibles: ${totalHorasLibres} hs`]);
+
+        const ws = XLSX.utils.aoa_to_sheet(filas);
+
+        // Anchos de columna óptimos para Google Sheets
+        ws['!cols'] = [
+          { wch: 22 }, // HORA
+          { wch: 26 }, // LUNES
+          { wch: 26 }, // MARTES
+          { wch: 26 }, // MIÉRCOLES
+          { wch: 26 }, // JUEVES
+          { wch: 26 }  // VIERNES
+        ];
+
+        const nombreHoja = `${turno.nombre}`.substring(0, 31).replace(/[:\\\/\?\*\[\]]/g, '_');
+        XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+      });
+
+      if (turnosConHoras === 0) {
+        UI.mostrarToast('No hay turnos con horas configuradas para exportar.', 'warning');
+        return;
+      }
+
+      const nombreArchivo = `Horario_Docente_${docente.apellido.replace(/\s+/g, '_')}_${docente.nombre.replace(/\s+/g, '_')}.xlsx`;
+      XLSX.writeFile(wb, nombreArchivo);
+
+      UI.mostrarToast(`Horario exportado como "${nombreArchivo}" con éxito.`, 'success');
+
+    } catch (error) {
+      console.error('Error al exportar horario a Excel:', error);
+      UI.mostrarToast('Ocurrió un error al generar el archivo Excel.', 'error');
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  IMPRESIÓN / GENERACIÓN DE PDF
+  // ════════════════════════════════════════════════════════════
+
+  function _imprimirHorarioDocente() {
+    if (!_docenteId) {
+      UI.mostrarToast('Seleccioná un docente primero para imprimir.', 'warning');
+      return;
+    }
+
+    try {
+      const docente = _docentes.find(d => d.id === _docenteId);
+      if (!docente) return;
+
+      const turnosOrdenados = [..._turnos].sort((a, b) => {
+        const nomA = a.nombre.toLowerCase();
+        const nomB = b.nombre.toLowerCase();
+        if (nomA.includes('matutino')) return -1;
+        if (nomB.includes('matutino')) return 1;
+        if (nomA.includes('vespertino')) return -1;
+        if (nomB.includes('vespertino')) return 1;
+        return a.id - b.id;
+      });
+
+      let tablasHTML = '';
+      let totalGlobalLiceo = 0;
+      let totalGlobalExt = 0;
+
+      turnosOrdenados.forEach(turno => {
+        const horas = _horariosPorTurno.get(turno.id) || [];
+        if (horas.length === 0) return;
+
+        const estadoTurno     = _estadosPorTurno.get(turno.id);
+        const asigsLiceoTurno = _asignacionesLiceoPorTurno.get(turno.id) || new Map();
+
+        const thead = `
+          <tr>
+            <th style="width:16%;">Hora</th>
+            ${DIAS.map(d => `<th>${_esc(d.nombre)}</th>`).join('')}
+          </tr>
+        `;
+
+        let totalTurnoLiceo = 0;
+        let totalTurnoExt   = 0;
+
+        const tbody = horas.map(h => {
+          const etiqueta = `Hora ${h.numero_hora}`;
+          const rango    = `${_formatearHora(h.hora_inicio)} - ${_formatearHora(h.hora_fin)}`;
+
+          const celdas = DIAS.map(d => {
+            const clave     = `${d.id}:${h.numero_hora}`;
+            const asigLiceo = asigsLiceoTurno.get(clave);
+            const ocupado   = estadoTurno ? estadoTurno.get(clave) === true : false;
+
+            if (asigLiceo) {
+              totalTurnoLiceo++;
+              totalGlobalLiceo++;
+              return `
+                <td class="celda-liceo">
+                  <strong>Grupo ${_esc(asigLiceo.grupo_nombre)}</strong>
+                  ${asigLiceo.asignatura_nombre ? `<br><span style="font-size:8.5pt;">${_esc(asigLiceo.asignatura_nombre)}</span>` : ''}
+                </td>
+              `;
+            }
+
+            if (ocupado) {
+              totalTurnoExt++;
+              totalGlobalExt++;
+              return `
+                <td class="celda-externo">
+                  <span>No disponible</span>
+                  <br><span style="font-size:7.5pt;opacity:0.85;">(Otra instit.)</span>
+                </td>
+              `;
+            }
+
+            return `<td class="celda-libre">Disponible</td>`;
+          }).join('');
+
+          return `
+            <tr>
+              <td class="col-hora">
+                <strong>${_esc(etiqueta)}</strong>
+                <br><span style="font-size:8pt;color:#64748b;">${rango}</span>
+              </td>
+              ${celdas}
+            </tr>
+          `;
+        }).join('');
+
+        tablasHTML += `
+          <div class="print-turno-box">
+            <h3 class="print-turno-titulo">
+              Turno ${_esc(turno.nombre)}
+              <span style="float:right;font-size:8.5pt;font-weight:normal;color:#475569;">
+                Clases Liceo: <strong>${totalTurnoLiceo} hs</strong> | No Disponible: <strong>${totalTurnoExt} hs</strong>
+              </span>
+            </h3>
+            <table>
+              <thead>${thead}</thead>
+              <tbody>${tbody}</tbody>
+            </table>
+          </div>
+        `;
+      });
+
+      const ventanaImpresion = window.open('', '_blank');
+      if (!ventanaImpresion) {
+        UI.mostrarToast('El navegador bloqueó la ventana de impresión. Habilitá las ventanas emergentes.', 'error');
+        return;
+      }
+
+      ventanaImpresion.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Horario — ${_esc(docente.apellido)}, ${_esc(docente.nombre)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #fff;
+      margin: 0;
+      padding: 0;
+      font-size: 10pt;
+      line-height: 1.3;
+    }
+    .print-header {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .print-title {
+      font-size: 14pt;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 3px 0;
+      color: #0f172a;
+    }
+    .print-sub {
+      font-size: 9pt;
+      color: #475569;
+      margin: 0;
+    }
+    .print-docente-info {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 9.5pt;
+    }
+    .print-docente-nombre {
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .print-turno-box {
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    .print-turno-titulo {
+      font-size: 10.5pt;
+      font-weight: 700;
+      background: #f1f5f9;
+      padding: 5px 10px;
+      border-left: 4px solid #4f46e5;
+      margin: 0 0 6px 0;
+      border-radius: 0 4px 4px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 6px;
+      font-size: 8.5pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      font-size: 8pt;
+      letter-spacing: 0.03em;
+    }
+    .col-hora {
+      font-weight: 600;
+      width: 17%;
+      background: #f8fafc;
+      text-align: left;
+    }
+    .celda-liceo {
+      background: #eef2ff !important;
+      color: #3730a3 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .celda-externo {
+      background: #fef2f2 !important;
+      color: #991b1b !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .celda-libre {
+      color: #64748b;
+    }
+    .print-firmas {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 40px;
+      font-size: 9pt;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+    .linea-firma {
+      width: 180px;
+      border-top: 1px solid #64748b;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <div>
+      <h1 class="print-title">PLANILLA DE HORARIO Y DISPONIBILIDAD DOCENTE</h1>
+      <p class="print-sub">Sistema de Gestión Académica y Horarios</p>
+    </div>
+    <div style="text-align:right;font-size:8.5pt;color:#64748b;">
+      Emitido el ${new Date().toLocaleDateString('es-UY')}
+    </div>
+  </div>
+
+  <div class="print-docente-info">
+    <div>Docente: <span class="print-docente-nombre">${_esc(docente.apellido)}, ${_esc(docente.nombre)}</span></div>
+    <div>C.I.: <strong>${_esc(docente.cedula || 'S/D')}</strong></div>
+    <div>Total Clases Liceo: <strong>${totalGlobalLiceo} hs</strong></div>
+  </div>
+
+  ${tablasHTML}
+
+  <div class="print-firmas">
+    <div>
+      <div class="linea-firma"></div>
+      <span>Firma del Docente</span>
+    </div>
+    <div>
+      <div class="linea-firma"></div>
+      <span>Firma Dirección / Administración</span>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 250);
+    };
+  <\/script>
+</body>
+</html>`);
+      ventanaImpresion.document.close();
+
+    } catch (error) {
+      console.error('Error al generar vista de impresión:', error);
+      UI.mostrarToast('Ocurrió un error al preparar la impresión.', 'error');
     }
   }
 
