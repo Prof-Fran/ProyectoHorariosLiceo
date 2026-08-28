@@ -16,8 +16,9 @@ window.Modulo_disponibilidad = (() => {
   let _docenteId        = null; // Docente seleccionado actualmente
 
   // Mapas por turno: id_turno → Map("dia:numhora" → boolean)
-  let _estadosPorTurno  = new Map();
-  let _cambiosPorTurno  = new Map(); // id_turno → Map("dia:numhora" → boolean)
+  let _estadosPorTurno           = new Map();
+  let _cambiosPorTurno           = new Map(); // id_turno → Map("dia:numhora" → boolean)
+  let _asignacionesLiceoPorTurno = new Map(); // id_turno → Map("dia:numhora" → { grupo_nombre, asignatura_nombre, id_grupo, id_horario })
 
   let _guardandoTurnos  = new Set(); // IDs de turnos que se están guardando activamente
 
@@ -45,6 +46,7 @@ window.Modulo_disponibilidad = (() => {
     _docenteId  = null;
     _estadosPorTurno.clear();
     _cambiosPorTurno.clear();
+    _asignacionesLiceoPorTurno.clear();
     _guardandoTurnos.clear();
 
     _contenedor.innerHTML = `
@@ -79,6 +81,9 @@ window.Modulo_disponibilidad = (() => {
           </span>
           <span class="leyenda-item">
             <span class="leyenda-dot leyenda-dot-ext"></span> <strong>No disponible</strong> (Ocupado en otra institución)
+          </span>
+          <span class="leyenda-item">
+            <span class="leyenda-dot leyenda-dot-liceo"></span> <strong>Clase en el liceo</strong> (Asignado en Armar Horarios)
           </span>
         </div>
 
@@ -299,24 +304,39 @@ window.Modulo_disponibilidad = (() => {
     UI.mostrarCargando(wrap, 'Cargando disponibilidad del docente...');
 
     try {
-      const res = await fetch(`${URL_DISP()}/por_docente/${_docenteId}`);
+      const res = await fetch(`${URL_DISP()}/completa_docente/${_docenteId}`);
       if (!res.ok) throw new Error('Error al obtener la disponibilidad');
-      const registros = await res.json();
+      const { externos, internos } = await res.json();
 
       // Inicializar mapas de estado para cada turno
       _estadosPorTurno.clear();
       _cambiosPorTurno.clear();
+      _asignacionesLiceoPorTurno.clear();
 
       _turnos.forEach(t => {
         _estadosPorTurno.set(t.id, new Map());
         _cambiosPorTurno.set(t.id, new Map());
+        _asignacionesLiceoPorTurno.set(t.id, new Map());
       });
 
-      // Rellenar estado actual a partir de la BD
-      registros.forEach(reg => {
+      // Rellenar estado de ocupación externa (otras instituciones)
+      (externos || []).forEach(reg => {
         const idTurno = reg.id_turno || (_turnos[0]?.id);
         if (_estadosPorTurno.has(idTurno)) {
           _estadosPorTurno.get(idTurno).set(`${reg.dia_semana}:${reg.numero_hora}`, reg.ocupado === true);
+        }
+      });
+
+      // Rellenar estado de ocupación interna (clases asignadas en este liceo)
+      (internos || []).forEach(reg => {
+        const idTurno = reg.id_turno || (_turnos[0]?.id);
+        if (_asignacionesLiceoPorTurno.has(idTurno)) {
+          _asignacionesLiceoPorTurno.get(idTurno).set(`${reg.dia_semana}:${reg.numero_hora}`, {
+            grupo_nombre: reg.grupo_nombre,
+            asignatura_nombre: reg.asignatura_nombre,
+            id_grupo: reg.id_grupo,
+            id_horario: reg.id_horario
+          });
         }
       });
 
@@ -404,7 +424,8 @@ window.Modulo_disponibilidad = (() => {
     }
 
     const cambiosTurno = _cambiosPorTurno.get(turno.id)?.size || 0;
-    const estadoTurno = _estadosPorTurno.get(turno.id) || new Map();
+    const estadoTurno = _estadosPorTurno.get(turno.id);
+    const asigsLiceoTurno = _asignacionesLiceoPorTurno.get(turno.id) || new Map();
 
     // Si el turno no tiene horas configuradas
     if (horas.length === 0) {
@@ -443,8 +464,32 @@ window.Modulo_disponibilidad = (() => {
       const rango    = `${_formatearHora(h.hora_inicio)} – ${_formatearHora(h.hora_fin)}`;
 
       const celdas = DIAS.map(d => {
-        const clave   = `${d.id}:${h.numero_hora}`;
-        const ocupado = estadoTurno.get(clave) === true;
+        const clave     = `${d.id}:${h.numero_hora}`;
+        const asigLiceo = asigsLiceoTurno.get(clave);
+        const ocupado   = estadoTurno ? estadoTurno.get(clave) === true : false;
+
+        if (asigLiceo) {
+          const infoMateria = asigLiceo.asignatura_nombre ? ` (${asigLiceo.asignatura_nombre})` : '';
+          return `
+            <td>
+              <button
+                type="button"
+                class="disp-celda ocupado-liceo"
+                data-turno="${turno.id}"
+                data-dia="${d.id}"
+                data-numhora="${h.numero_hora}"
+                data-tipo="liceo"
+                title="Clase asignada en el liceo: Grupo ${_esc(asigLiceo.grupo_nombre)}${_esc(infoMateria)} — Gestionado en Armar Horarios"
+                aria-label="${_esc(d.nombre)} hora ${h.numero_hora} clase asignada en liceo grupo ${_esc(asigLiceo.grupo_nombre)}"
+              >
+                <span class="disp-badge-grupo">
+                  <span class="disp-badge-grupo-nombre">${_esc(asigLiceo.grupo_nombre)}</span>
+                  <i class="fa-solid fa-school disp-badge-grupo-icono" aria-hidden="true"></i>
+                </span>
+              </button>
+            </td>
+          `;
+        }
 
         return `
           <td>
@@ -454,6 +499,7 @@ window.Modulo_disponibilidad = (() => {
               data-turno="${turno.id}"
               data-dia="${d.id}"
               data-numhora="${h.numero_hora}"
+              data-tipo="externo"
               title="${ocupado ? 'No disponible (ocupado en otra institución) — Clic para marcar como disponible' : 'Disponible en liceo — Clic para marcar como ocupado'}"
               aria-label="${_esc(d.nombre)} hora ${h.numero_hora} ${ocupado ? 'no disponible' : 'disponible'}"
               aria-pressed="${ocupado}"
@@ -578,6 +624,14 @@ window.Modulo_disponibilidad = (() => {
     const numHora = Number(celda.dataset.numhora);
     const clave   = `${dia}:${numHora}`;
 
+    const asigLiceo = _asignacionesLiceoPorTurno.get(idTurno)?.get(clave);
+    if (asigLiceo || celda.classList.contains('ocupado-liceo')) {
+      const nomGrup = asigLiceo?.grupo_nombre ? `al grupo ${asigLiceo.grupo_nombre}` : 'a un grupo del liceo';
+      const nomAsig = asigLiceo?.asignatura_nombre ? ` (${asigLiceo.asignatura_nombre})` : '';
+      UI.mostrarToast(`Esta hora está asignada ${nomGrup}${nomAsig}. Para modificarla, hacelo desde el módulo "Armar Horarios".`, 'info');
+      return;
+    }
+
     const estadoTurno  = _estadosPorTurno.get(idTurno);
     const cambiosTurno = _cambiosPorTurno.get(idTurno);
 
@@ -605,16 +659,20 @@ window.Modulo_disponibilidad = (() => {
   function _marcarTodos(idTurno, marcarOcupado) {
     if (_guardandoTurnos.has(idTurno)) return;
 
-    const horas = _horariosPorTurno.get(idTurno) || [];
+    const horas        = _horariosPorTurno.get(idTurno) || [];
     const estadoTurno  = _estadosPorTurno.get(idTurno);
     const cambiosTurno = _cambiosPorTurno.get(idTurno);
-    const card = document.getElementById(`disp-card-turno-${idTurno}`);
+    const asigsLiceo   = _asignacionesLiceoPorTurno.get(idTurno) || new Map();
+    const card         = document.getElementById(`disp-card-turno-${idTurno}`);
 
     if (!estadoTurno || !cambiosTurno || !card) return;
 
     horas.forEach(h => {
       DIAS.forEach(d => {
         const clave = `${d.id}:${h.numero_hora}`;
+        // Omitir si la celda tiene una clase asignada en el liceo
+        if (asigsLiceo.has(clave)) return;
+
         const actual = estadoTurno.get(clave) === true;
         if (actual !== marcarOcupado) {
           estadoTurno.set(clave, marcarOcupado);
@@ -623,8 +681,8 @@ window.Modulo_disponibilidad = (() => {
       });
     });
 
-    // Actualizar todas las celdas del card
-    card.querySelectorAll('.disp-celda').forEach(celda => {
+    // Actualizar todas las celdas del card excepto las asignadas en liceo
+    card.querySelectorAll('.disp-celda:not(.ocupado-liceo)').forEach(celda => {
       celda.classList.toggle('ocupado', marcarOcupado);
       celda.setAttribute('aria-pressed', String(marcarOcupado));
       celda.innerHTML = marcarOcupado

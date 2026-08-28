@@ -97,6 +97,47 @@ router.get('/por_docente_turno/:id_docente/:id_turno', async (req, res) => {
   }
 });
 
+// GET /api/disponibilidad/completa_docente/:id_docente — Disponibilidad externa + Clases asignadas en el Liceo
+router.get('/completa_docente/:id_docente', async (req, res) => {
+  try {
+    const { id_docente } = req.params;
+
+    // 1. Ocupación externa (otras instituciones)
+    const externos = await db.query(`
+      SELECT dd.id, dd.id_docente, dd.id_turno, dd.dia_semana, dd.numero_hora, dd.ocupado,
+             'externo' AS tipo_ocupacion
+      FROM disponibilidad_docente dd
+      WHERE dd.id_docente = $1 AND dd.ocupado = TRUE
+      ORDER BY dd.id_turno, dd.dia_semana, dd.numero_hora
+    `, [id_docente]);
+
+    // 2. Ocupación interna (clases asignadas en el liceo en horario_grupo)
+    const internos = await db.query(`
+      SELECT hg.id AS id_horario, da.id_docente, g.id_turno, hg.dia_semana, hg.numero_hora,
+             'interno' AS tipo_ocupacion,
+             hg.id_grupo,
+             CONCAT(n.nombre, g.numero) AS grupo_nombre,
+             a.nombre AS asignatura_nombre
+      FROM horario_grupo hg
+      JOIN grupos              g  ON g.id  = hg.id_grupo
+      JOIN niveles             n  ON n.id  = g.id_nivel
+      JOIN asignacion_docente  ad ON ad.id = hg.id_grupo_docente
+      JOIN docente_asignatura  da ON da.id = ad.id_docente_asignatura
+      JOIN asignaturas         a  ON a.id  = ad.id_asignatura
+      WHERE da.id_docente = $1
+      ORDER BY g.id_turno, hg.dia_semana, hg.numero_hora
+    `, [id_docente]);
+
+    res.json({
+      externos: externos.rows,
+      internos: internos.rows
+    });
+  } catch (error) {
+    console.error('Error al obtener disponibilidad completa del docente:', error);
+    res.status(500).json({ error: 'Error al obtener disponibilidad completa del docente' });
+  }
+});
+
 // PUT /api/disponibilidad/guardar_turno — Guardado atómico/batch de disponibilidad por docente y turno
 // Body: { id_docente, id_turno, cambios: [ { dia_semana, numero_hora, ocupado } ] }
 router.put('/guardar_turno', async (req, res) => {

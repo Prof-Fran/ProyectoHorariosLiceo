@@ -54,7 +54,7 @@ router.get('/docente_ocupado/:id_docente', async (req, res) => {
   try {
     const { id_docente } = req.params;
     const resultado = await db.query(
-      'SELECT * FROM vista_docente_ocupado WHERE id_docente = $1 ORDER BY dia_semana, numero_hora',
+      'SELECT * FROM vista_docente_ocupado WHERE id_docente = $1 ORDER BY id_turno, dia_semana, numero_hora',
       [id_docente]
     );
     res.json(resultado.rows);

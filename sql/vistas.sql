@@ -80,6 +80,7 @@ ORDER BY n.nombre, g.numero, a.nombre;
 -- como por asignaciones dentro del liceo (horario_grupo)
 -- Usada para detectar conflictos en tiempo real
 -- ============================================================
+DROP VIEW IF EXISTS vista_docente_ocupado CASCADE;
 CREATE OR REPLACE VIEW vista_docente_ocupado AS
 -- Bloques ocupados en otras instituciones
 SELECT
@@ -90,7 +91,9 @@ SELECT
     dd.dia_semana   AS dia_semana,
     dd.numero_hora  AS numero_hora,
     'externo'       AS tipo_ocupacion,
-    NULL            AS id_grupo
+    NULL::integer   AS id_grupo,
+    NULL::text      AS grupo_nombre,
+    NULL::text      AS asignatura_nombre
 FROM disponibilidad_docente dd
 JOIN docentes d ON d.id = dd.id_docente
 WHERE dd.ocupado = TRUE
@@ -106,10 +109,14 @@ SELECT
     hg.dia_semana   AS dia_semana,
     hg.numero_hora  AS numero_hora,
     'interno'       AS tipo_ocupacion,
-    hg.id_grupo     AS id_grupo
+    hg.id_grupo     AS id_grupo,
+    CONCAT(n.nombre, g.numero)::text AS grupo_nombre,
+    a.nombre::text  AS asignatura_nombre
 FROM horario_grupo hg
 JOIN grupos              g  ON g.id  = hg.id_grupo
+JOIN niveles             n  ON n.id  = g.id_nivel
 JOIN asignacion_docente  ad ON ad.id = hg.id_grupo_docente
 JOIN docente_asignatura  da ON da.id = ad.id_docente_asignatura
+JOIN asignaturas         a  ON a.id  = ad.id_asignatura
 JOIN docentes            d  ON d.id  = da.id_docente
 ORDER BY id_docente, id_turno, dia_semana, numero_hora;

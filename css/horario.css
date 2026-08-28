@@ -777,6 +777,44 @@
   color: transparent;
 }
 
+/* Celda con clase asignada en este liceo (Armar Horarios) */
+.disp-celda.ocupado-liceo {
+  background: var(--estado-ocupado-liceo-bg);
+  border-color: var(--estado-ocupado-liceo-bdr);
+  color: #60a5fa;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15) inset;
+}
+
+.disp-celda.ocupado-liceo:hover {
+  background: rgba(59, 130, 246, 0.24);
+  border-color: var(--estado-ocupado-liceo);
+  color: #93c5fd;
+  transform: scale(1.06);
+}
+
+.disp-celda.ocupado-liceo .disp-badge-grupo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 1px;
+}
+
+.disp-celda.ocupado-liceo .disp-badge-grupo-nombre {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #93c5fd;
+}
+
+.disp-celda.ocupado-liceo .disp-badge-grupo-icono {
+  font-size: 0.55rem;
+  opacity: 0.85;
+}
+
 /* ── Leyenda de colores ─────────────────────────────────────── */
 .leyenda-colores {
   display: flex;
