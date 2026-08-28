@@ -637,10 +637,16 @@ window.Modulo_armado = (() => {
             </span>
           </div>
         </div>
-        <div class="grupo-horas-resumen">
-          <div class="hora-stat">
-            <span class="hora-stat-valor" id="armado-horas-asignadas">${totalHoras}</span>
-            <span class="hora-stat-label">Asignadas</span>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="armado-btn-consultar-disp" title="Abrir disponibilidad de docentes en pestaña separada para trabajar con dos pantallas">
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            Consultar disponibilidades
+          </button>
+          <div class="grupo-horas-resumen">
+            <div class="hora-stat">
+              <span class="hora-stat-valor" id="armado-horas-asignadas">${totalHoras}</span>
+              <span class="hora-stat-label">Asignadas</span>
+            </div>
           </div>
         </div>
       </div>
@@ -882,6 +888,13 @@ window.Modulo_armado = (() => {
   function _bindEventos() {
     // Botón volver
     document.getElementById('armado-btn-volver')?.addEventListener('click', _volverASeleccion);
+
+    // Botón consultar disponibilidades en pestaña separada
+    document.getElementById('armado-btn-consultar-disp')?.addEventListener('click', () => {
+      if (_grupoActual?.id) {
+        window.open(`consulta_disponibilidad.html?id_grupo=${_grupoActual.id}`, '_blank');
+      }
+    });
 
     // Botón administrar docentes
     document.getElementById('armado-btn-admin-docentes')?.addEventListener('click', () => {

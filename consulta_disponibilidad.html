@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Consulta de Disponibilidad de Docentes — Sistema de Horarios" />
+  <title>Disponibilidad de Docentes — Consulta</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Estilos del sistema -->
+  <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/formularios.css" />
+  <link rel="stylesheet" href="css/horario.css" />
+
+  <style>
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+    }
+
+    .consulta-layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      flex: 1;
+      box-sizing: border-box;
+    }
+
+    .consulta-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+    }
+
+    .consulta-header-info {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .consulta-icono-box {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.25));
+      border: 1px solid rgba(99,102,241,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a5b4fc;
+      font-size: 1.25rem;
+    }
+
+    .consulta-titulo-main {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0 0 0.2rem 0;
+    }
+
+    .consulta-subtitulo {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .consulta-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .consulta-view-toggle {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--glass-border);
+    }
+
+    .consulta-view-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.4rem 0.75rem;
+      border-radius: 4px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all var(--transition);
+    }
+
+    .consulta-view-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Barra de filtros y leyenda */
+    .consulta-subbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .consulta-buscador {
+      max-width: 320px;
+      position: relative;
+      flex: 1;
+    }
+
+    .consulta-buscador input {
+      width: 100%;
+      padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: var(--text-sm);
+      outline: none;
+      transition: border-color var(--transition);
+      box-sizing: border-box;
+    }
+
+    .consulta-buscador input:focus {
+      border-color: var(--accent);
+    }
+
+    .consulta-buscador i {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-faint);
+      font-size: 0.85rem;
+    }
+
+    /* Contenedor principal de vistas */
+    #consulta-contenedor {
+      flex: 1;
+    }
+
+    /* Vista Pestañas (Horizontal Split) */
+    .vista-pestanas-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.25rem;
+      min-height: 520px;
+    }
+
+    .pestanas-sidebar {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: calc(100vh - 240px);
+    }
+
+    .pestanas-sidebar-header {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--glass-border);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pestanas-sidebar-list {
+      overflow-y: auto;
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .docente-tab-card {
+      padding: 0.75rem 0.85rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      transition: all var(--transition);
+      text-align: left;
+    }
+
+    .docente-tab-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--glass-border-h);
+    }
+
+    .docente-tab-card.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .docente-tab-nombre {
+      font-weight: 700;
+      font-size: var(--text-sm);
+      color: var(--text);
+    }
+
+    .docente-tab-materia {
+      font-size: var(--text-xs);
+      color: var(--accent-hover);
+    }
+
+    .pestanas-grilla-panel {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-x: auto;
+    }
+
+    /* Vista Mosaico (Multi-card Grid) */
+    .vista-mosaico-layout {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .mosaico-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: var(--shadow-sm);
+      transition: border-color var(--transition);
+    }
+
+    .mosaico-card:hover {
+      border-color: var(--glass-border-h);
+    }
+
+    .mosaico-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 0.6rem;
+    }
+
+    .mosaico-docente-nombre {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .mosaico-docente-materia {
+      font-size: var(--text-xs);
+      color: var(--accent-hover);
+    }
+
+    @media (max-width: 900px) {
+      .vista-pestanas-layout {
+        grid-template-columns: 1fr;
+      }
+      .vista-mosaico-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="consulta-layout">
+
+    <!-- Topbar informativa -->
+    <header class="consulta-topbar">
+      <div class="consulta-header-info">
+        <div class="consulta-icono-box">
+          <i class="fa-solid fa-calendar-week" aria-hidden="true"></i>
+        </div>
+        <div>
+          <h1 class="consulta-titulo-main" id="header-grupo-titulo">
+            Cargando grupo...
+          </h1>
+          <p class="consulta-subtitulo">
+            Visualización de disponibilidad semanal de los docentes asignados al grupo (modo consulta)
+          </p>
+        </div>
+      </div>
+
+      <div class="consulta-actions">
+        <div class="consulta-view-toggle">
+          <button class="consulta-view-btn active" id="btn-vista-pestanas" title="Ver docente por pestañas">
+            <i class="fa-solid fa-table-list" aria-hidden="true"></i>
+            Pestañas
+          </button>
+          <button class="consulta-view-btn" id="btn-vista-mosaico" title="Ver todos los docentes en mosaico">
+            <i class="fa-solid fa-border-all" aria-hidden="true"></i>
+            Mosaico
+          </button>
+        </div>
+
+        <button class="btn btn-secondary btn-sm" id="btn-actualizar" title="Recargar disponibilidades en tiempo real">
+          <i class="fa-solid fa-rotate" id="icono-refrescar" aria-hidden="true"></i>
+          Actualizar
+        </button>
+      </div>
+    </header>
+
+    <!-- Subbar: buscador y leyenda -->
+    <div class="consulta-subbar">
+      <div class="consulta-buscador">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input type="text" id="filtro-docente-input" placeholder="Buscar docente o materia..." autocomplete="off" />
+      </div>
+
+      <div class="leyenda-colores" style="margin:0;">
+        <span class="leyenda-item">
+          <span class="leyenda-dot leyenda-dot-vacio"></span> <strong>Libre para asignar</strong>
+        </span>
+        <span class="leyenda-item">
+          <span class="leyenda-dot leyenda-dot-ext"></span> <strong>No disponible</strong> (Otra institución)
+        </span>
+        <span class="leyenda-item">
+          <span class="leyenda-dot leyenda-dot-liceo"></span> <strong>Clase en el Liceo</strong> (Otro grupo)
+        </span>
+      </div>
+    </div>
+
+    <!-- Contenedor dinámico -->
+    <main id="consulta-contenedor"></main>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/app.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/consulta_disponibilidad.js"></script>
+</body>
+</html>

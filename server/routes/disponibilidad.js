@@ -138,6 +138,127 @@ router.get('/completa_docente/:id_docente', async (req, res) => {
   }
 });
 
+// GET /api/disponibilidad/grupo_docentes/:id_grupo — Disponibilidad de todos los docentes asignados a un grupo
+router.get('/grupo_docentes/:id_grupo', async (req, res) => {
+  try {
+    const { id_grupo } = req.params;
+
+    // 1. Datos del grupo y turno
+    const grupoRes = await db.query(`
+      SELECT g.id, g.numero, g.id_nivel, n.nombre AS nivel_nombre,
+             g.id_turno, t.nombre AS turno_nombre
+      FROM grupos g
+      JOIN niveles n ON n.id = g.id_nivel
+      JOIN turnos t ON t.id = g.id_turno
+      WHERE g.id = $1
+    `, [id_grupo]);
+
+    if (grupoRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado' });
+    }
+    const grupo = grupoRes.rows[0];
+
+    // 2. Todos los turnos y sus horas configuradas
+    const turnosRes = await db.query(`SELECT * FROM turnos ORDER BY id`);
+    const turnos = turnosRes.rows;
+
+    const horasRes = await db.query(`
+      SELECT * FROM horarios_turno
+      ORDER BY id_turno, numero_hora
+    `);
+    const todasLasHoras = horasRes.rows;
+
+    // 3. Docentes asignados a este grupo (con asignaturas)
+    const asignacionesRes = await db.query(`
+      SELECT DISTINCT d.id, d.nombre, d.apellido, d.cedula,
+             da.grado, da.puntaje, da.efectivo,
+             a.id AS id_asignatura, a.nombre AS asignatura_nombre, a.carga_horaria
+      FROM asignacion_docente ad
+      JOIN docente_asignatura da ON da.id = ad.id_docente_asignatura
+      JOIN docentes d ON d.id = da.id_docente
+      JOIN asignaturas a ON a.id = ad.id_asignatura
+      WHERE ad.id_grupo = $1
+      ORDER BY d.apellido, d.nombre, a.nombre
+    `, [id_grupo]);
+
+    // Agrupar por docente
+    const docentesMap = new Map();
+    for (const row of asignacionesRes.rows) {
+      if (!docentesMap.has(row.id)) {
+        docentesMap.set(row.id, {
+          id: row.id,
+          nombre: row.nombre,
+          apellido: row.apellido,
+          cedula: row.cedula,
+          grado: row.grado,
+          puntaje: row.puntaje,
+          efectivo: row.efectivo,
+          asignaturas: [],
+          externos: [],
+          internos: []
+        });
+      }
+      docentesMap.get(row.id).asignaturas.push({
+        id: row.id_asignatura,
+        nombre: row.asignatura_nombre,
+        carga_horaria: row.carga_horaria
+      });
+    }
+
+    const idsDocentes = Array.from(docentesMap.keys());
+
+    if (idsDocentes.length > 0) {
+      // 4. Ocupación externa para todos estos docentes
+      const externosRes = await db.query(`
+        SELECT id, id_docente, id_turno, dia_semana, numero_hora, ocupado, 'externo' AS tipo_ocupacion
+        FROM disponibilidad_docente
+        WHERE id_docente = ANY($1::int[]) AND ocupado = TRUE
+        ORDER BY id_docente, id_turno, dia_semana, numero_hora
+      `, [idsDocentes]);
+
+      externosRes.rows.forEach(r => {
+        if (docentesMap.has(r.id_docente)) {
+          docentesMap.get(r.id_docente).externos.push(r);
+        }
+      });
+
+      // 5. Ocupación interna en el liceo para todos estos docentes (en todos los grupos)
+      const internosRes = await db.query(`
+        SELECT hg.id AS id_horario, da.id_docente, g.id_turno, t.nombre AS turno_nombre,
+               hg.dia_semana, hg.numero_hora, 'interno' AS tipo_ocupacion,
+               hg.id_grupo,
+               CONCAT(n.nombre, g.numero) AS grupo_nombre,
+               a.nombre AS asignatura_nombre
+        FROM horario_grupo hg
+        JOIN grupos g ON g.id = hg.id_grupo
+        JOIN turnos t ON t.id = g.id_turno
+        JOIN niveles n ON n.id = g.id_nivel
+        JOIN asignacion_docente ad ON ad.id = hg.id_grupo_docente
+        JOIN docente_asignatura da ON da.id = ad.id_docente_asignatura
+        JOIN asignaturas a ON a.id = ad.id_asignatura
+        WHERE da.id_docente = ANY($1::int[])
+        ORDER BY da.id_docente, g.id_turno, hg.dia_semana, hg.numero_hora
+      `, [idsDocentes]);
+
+      internosRes.rows.forEach(r => {
+        if (docentesMap.has(r.id_docente)) {
+          docentesMap.get(r.id_docente).internos.push(r);
+        }
+      });
+    }
+
+    res.json({
+      grupo,
+      turnos,
+      horarios: todasLasHoras,
+      docentes: Array.from(docentesMap.values())
+    });
+  } catch (error) {
+    console.error('Error al obtener disponibilidades del grupo:', error);
+    res.status(500).json({ error: 'Error al obtener disponibilidades de los docentes del grupo' });
+  }
+});
+
 // PUT /api/disponibilidad/guardar_turno — Guardado atómico/batch de disponibilidad por docente y turno
 // Body: { id_docente, id_turno, cambios: [ { dia_semana, numero_hora, ocupado } ] }
 router.put('/guardar_turno', async (req, res) => {
