@@ -188,8 +188,8 @@
 
 ## 📤 FASE 8 — Exportación
 
-- [ ] Integrar SheetJS (librería Excel)
-- [ ] Exportar horario de un grupo a `.xlsx`
+- [x] Integrar SheetJS (librería Excel)
+- [x] Exportar horario de un grupo a `.xlsx`
 - [ ] Exportar horario de un docente a `.xlsx`
 - [ ] (Futuro) Exportar horario completo de la institución
 - [ ] (Futuro) Soporte para impresión / PDF
@@ -207,5 +207,4 @@
 ---
 
 **Total de tareas principales:** 70+  
-**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas, Fase 7.1-7.2-7.2B completadas
-
+**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas, Fases 7.1-7.2-7.2B completadas, Fase 8 (Grupo .xlsx) completada

@@ -637,10 +637,14 @@ window.Modulo_armado = (() => {
             </span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" id="armado-btn-consultar-disp" title="Abrir disponibilidad de docentes en pestaña separada para trabajar con dos pantallas">
             <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
             Consultar disponibilidades
+          </button>
+          <button class="btn btn-secondary btn-sm" id="armado-btn-exportar" title="Exportar horario del grupo a formato Excel / Google Sheets">
+            <i class="fa-solid fa-file-excel" style="color:#22c55e;" aria-hidden="true"></i>
+            Exportar Horario
           </button>
           <div class="grupo-horas-resumen">
             <div class="hora-stat">
@@ -895,6 +899,9 @@ window.Modulo_armado = (() => {
         window.open(`consulta_disponibilidad.html?id_grupo=${_grupoActual.id}`, '_blank');
       }
     });
+
+    // Botón exportar horario a Excel / Google Sheets
+    document.getElementById('armado-btn-exportar')?.addEventListener('click', _exportarHorarioGrupo);
 
     // Botón administrar docentes
     document.getElementById('armado-btn-admin-docentes')?.addEventListener('click', () => {
@@ -1452,6 +1459,97 @@ window.Modulo_armado = (() => {
       // Actualizar estado del card
       card.classList.toggle('sin-horas', restantes === 0);
     });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  EXPORTACIÓN A EXCEL / GOOGLE SHEETS (FASE 8)
+  // ════════════════════════════════════════════════════════════
+
+  function _exportarHorarioGrupo() {
+    if (!_grupoActual) {
+      UI.mostrarToast('No hay ningún grupo seleccionado para exportar.', 'warning');
+      return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+      UI.mostrarToast('La librería de exportación no está disponible.', 'error');
+      return;
+    }
+
+    try {
+      const g = _grupoActual;
+      const nombreGrupo = `${g.nivel_nombre || ''}${g.numero || ''}`;
+      const nombreTurno = g.turno_nombre || '';
+
+      // Crear matriz de celdas para la planilla
+      const filas = [];
+
+      // Fila 1: Título principal
+      filas.push([`HORARIO SEMANAL — ${nombreGrupo} (${nombreTurno})`]);
+      // Fila 2: Subtítulo y fecha de emisión
+      filas.push([`Generado el ${new Date().toLocaleDateString('es-UY')} — Sistema de Gestión de Horarios`]);
+      // Fila 3: Espacio
+      filas.push([]);
+      // Fila 4: Encabezados de columnas
+      filas.push(['HORA', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES']);
+
+      // Ordenar horas del turno por número
+      const horasOrdenadas = [..._horasTurno].sort((a, b) => a.numero_hora - b.numero_hora);
+
+      horasOrdenadas.forEach(hora => {
+        const horaTexto = `${hora.numero_hora}° (${hora.hora_inicio || ''} - ${hora.hora_fin || ''})`;
+        const filaHora = [horaTexto];
+
+        // Días 1 (Lunes) a 5 (Viernes)
+        for (let dia = 1; dia <= 5; dia++) {
+          const asignaciones = _obtenerAsignacionesCelda(dia, hora.numero_hora);
+
+          if (asignaciones.length === 0) {
+            filaHora.push('');
+          } else if (asignaciones.length === 1) {
+            const a = asignaciones[0];
+            filaHora.push(`${a.asignatura_nombre || ''}\n${a.docente_apellido || ''}, ${a.docente_nombre || ''}`);
+          } else {
+            // Dupla
+            const duplaTexto = '[DUPLA]\n' + asignaciones
+              .map((a, idx) => `${idx + 1}. ${a.asignatura_nombre || ''} (${a.docente_apellido || ''})`)
+              .join('\n');
+            filaHora.push(duplaTexto);
+          }
+        }
+
+        filas.push(filaHora);
+      });
+
+      // Crear hoja de cálculo a partir de la matriz
+      const ws = XLSX.utils.aoa_to_sheet(filas);
+
+      // Configurar anchos de columna óptimos para Google Sheets
+      ws['!cols'] = [
+        { wch: 22 }, // HORA
+        { wch: 26 }, // LUNES
+        { wch: 26 }, // MARTES
+        { wch: 26 }, // MIÉRCOLES
+        { wch: 26 }, // JUEVES
+        { wch: 26 }  // VIERNES
+      ];
+
+      // Crear libro de trabajo (workbook)
+      const wb = XLSX.utils.book_new();
+      const nombreHoja = `Horario_${nombreGrupo}`.substring(0, 31).replace(/[:\\\/\?\*\[\]]/g, '_');
+      XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+
+      // Nombre del archivo .xlsx a descargar
+      const nombreArchivo = `Horario_${nombreGrupo.replace(/\s+/g, '_')}_${nombreTurno.replace(/\s+/g, '_')}.xlsx`;
+
+      // Disparar descarga en el navegador
+      XLSX.writeFile(wb, nombreArchivo);
+
+      UI.mostrarToast(`Horario exportado como "${nombreArchivo}" con éxito.`, 'success');
+    } catch (error) {
+      console.error('Error al exportar horario a Excel:', error);
+      UI.mostrarToast('Ocurrió un error al generar el archivo Excel.', 'error');
+    }
   }
 
   // ════════════════════════════════════════════════════════════
