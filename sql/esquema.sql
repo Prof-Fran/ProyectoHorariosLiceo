@@ -136,7 +136,7 @@ CREATE TABLE asignacion_docente (
     id_grupo              INTEGER NOT NULL REFERENCES grupos(id)             ON DELETE CASCADE,
     id_asignatura         INTEGER NOT NULL REFERENCES asignaturas(id)        ON DELETE CASCADE,
     id_docente_asignatura INTEGER NOT NULL REFERENCES docente_asignatura(id) ON DELETE RESTRICT,
-    UNIQUE (id_grupo, id_asignatura)
+    UNIQUE (id_grupo, id_asignatura, id_docente_asignatura)
 );
 
 -- ============================================================

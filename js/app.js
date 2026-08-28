@@ -67,13 +67,14 @@ const App = (() => {
 
     // Actualizar título de la topbar
     const titulos = {
-      niveles:        'Niveles',
-      turnos:         'Turnos y Horarios',
-      grupos:         'Grupos',
-      asignaturas:    'Asignaturas',
-      docentes:       'Docentes',
-      disponibilidad: 'Disponibilidad Docente',
-      armado:         'Armado de Horarios',
+      niveles:          'Niveles',
+      turnos:           'Turnos y Horarios',
+      grupos:           'Grupos',
+      asignaturas:      'Asignaturas',
+      docentes:         'Docentes',
+      disponibilidad:   'Disponibilidad Docente',
+      asignacion_grupo: 'Asignar Docentes a Grupos',
+      armado:           'Armado de Horarios',
     };
     const el = document.getElementById('topbar-titulo');
     if (el) el.textContent = titulos[modulo] || modulo;

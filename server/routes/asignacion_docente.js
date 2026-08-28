@@ -123,6 +123,81 @@ router.get('/por_grupo_con_detalle/:id_grupo', async (req, res) => {
   }
 });
 
+// GET /api/asignacion_docente/estructura_completa/:id_grupo — Estructura completa de asignaturas y docentes para un grupo
+router.get('/estructura_completa/:id_grupo', async (req, res) => {
+  try {
+    const { id_grupo } = req.params;
+
+    // 1. Obtener datos del grupo
+    const grupoRes = await db.query(`
+      SELECT g.id, g.numero, g.id_nivel, n.nombre AS nivel_nombre, g.id_turno, t.nombre AS turno_nombre
+      FROM grupos g
+      JOIN niveles n ON n.id = g.id_nivel
+      JOIN turnos t ON t.id = g.id_turno
+      WHERE g.id = $1
+    `, [id_grupo]);
+
+    if (grupoRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado' });
+    }
+    const grupo = grupoRes.rows[0];
+
+    // 2. Obtener todas las asignaturas de este nivel
+    const asigRes = await db.query(`
+      SELECT id, nombre, carga_horaria
+      FROM asignaturas
+      WHERE id_nivel = $1
+      ORDER BY nombre
+    `, [grupo.id_nivel]);
+
+    // 3. Obtener todas las asignaciones existentes de este grupo
+    const asigDocRes = await db.query(`
+      SELECT ad.id AS id_asignacion, ad.id_asignatura, ad.id_docente_asignatura,
+             d.id AS id_docente, d.nombre AS docente_nombre, d.apellido AS docente_apellido, d.cedula,
+             da.grado, da.puntaje, da.efectivo
+      FROM asignacion_docente ad
+      JOIN docente_asignatura da ON da.id = ad.id_docente_asignatura
+      JOIN docentes d ON d.id = da.id_docente
+      WHERE ad.id_grupo = $1
+      ORDER BY da.efectivo DESC, da.grado DESC, da.puntaje DESC
+    `, [id_grupo]);
+
+    // 4. Obtener todos los docentes habilitados para las asignaturas de este nivel
+    const docHabilitadosRes = await db.query(`
+      SELECT da.id AS id_docente_asignatura, da.id_asignatura,
+             d.id AS id_docente, d.nombre AS docente_nombre, d.apellido AS docente_apellido, d.cedula,
+             da.grado, da.puntaje, da.efectivo
+      FROM docente_asignatura da
+      JOIN docentes d ON d.id = da.id_docente
+      JOIN asignaturas a ON a.id = da.id_asignatura
+      WHERE a.id_nivel = $1
+      ORDER BY da.efectivo DESC, da.grado DESC, da.puntaje DESC, d.apellido, d.nombre
+    `, [grupo.id_nivel]);
+
+    // Organizar estructura combinada
+    const asignaturasEstructura = asigRes.rows.map(asig => {
+      const asignados = asigDocRes.rows.filter(ad => ad.id_asignatura === asig.id);
+      const docentesHabilitados = docHabilitadosRes.rows.filter(dh => dh.id_asignatura === asig.id);
+
+      return {
+        id_asignatura: asig.id,
+        nombre: asig.nombre,
+        carga_horaria: asig.carga_horaria,
+        asignados: asignados, // Array con 0, 1 o 2 docentes asignados
+        docentes_habilitados: docentesHabilitados
+      };
+    });
+
+    res.json({
+      grupo,
+      asignaturas: asignaturasEstructura
+    });
+  } catch (error) {
+    console.error('Error al obtener estructura completa del grupo:', error);
+    res.status(500).json({ error: 'Error al obtener estructura completa del grupo' });
+  }
+});
+
 // GET /api/asignacion_docente/:id — Una asignación por ID
 router.get('/:id', async (req, res) => {
   try {
@@ -176,7 +251,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'Ya existe un docente asignado a esa asignatura en ese grupo' });
+      return res.status(409).json({ error: 'Este docente ya está asignado a esa asignatura en este grupo' });
     }
     res.status(500).json({ error: 'Error al crear la asignación' });
   }

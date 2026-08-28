@@ -135,6 +135,8 @@
 
 ## 📅 FASE 7 — Armado de Horarios (Módulo Principal)
 
+## 📅 FASE 7 — Armado de Horarios (Módulo Principal)
+
 ### 7.1 Interfaz de Usuario (UI)
 *Crear la estructura visual del módulo*
 
@@ -148,8 +150,8 @@
   - [x] Ordenados por grado (desc) y puntaje (desc)
   - [x] Mostrar: asignatura, horas asignadas, horas restantes
 
-### 7.2 Funcionalidad de Asignación
-*Implementar la lógica de asignación y eliminación*
+### 7.2 Funcionalidad de Asignación en Grilla
+*Implementar la lógica de asignación y eliminación en la grilla semanal*
 
 - [x] 7.2.1 Implementar asignación por clic en docente + celda de grilla
 - [x] 7.2.2 Implementar eliminación de asignación desde la celda
@@ -157,30 +159,30 @@
 - [x] 7.2.4 Implementar actualización automática de contadores al cambiar asignación
 
 ### 7.2B Asignación de Docentes a Grupos
-*Pantalla intermedia para asignar docentes antes del armado*
+*Módulo interactivo para asignar docentes por nivel, grupo y asignatura (con duplas/taller)*
 
-- [x] 7.2B.1 Crear endpoints para obtener docentes disponibles/asignados al grupo
-- [x] 7.2B.2 Crear pantalla intermedia "Asignar Docentes al Grupo"
-- [x] 7.2B.3 Implementar lógica de asignación/desasignación de docentes al grupo
-- [x] 7.2B.4 Agregar botón para administrar docentes desde el panel de armado
-- [x] 7.2B.5 Agregar aviso cuando no hay docentes asignados al grupo
-- [x] 7.2B.6 Filtrar docentes en el armado según asignación al grupo
+- [x] 7.2B.1 Crear endpoints para obtener estructura completa de asignaturas y docentes por grupo (`/api/asignacion_docente/estructura_completa/:id_grupo`)
+- [x] 7.2B.2 Modificar restricción de base de datos a `UNIQUE(id_grupo, id_asignatura, id_docente_asignatura)` para permitir 2 docentes en la misma materia (Taller / duplas)
+- [x] 7.2B.3 Crear módulo interactivo `modulos/asignacion_grupo.js` con selector de nivel (7°, 8°, 9°, 1° EMS, etc.), selector de grupo y tarjetas por asignatura
+- [x] 7.2B.4 Implementar desplegables de docentes filtrados por materia y ordenados por escalafón (Efectivo > Grado > Puntaje)
+- [x] 7.2B.5 Implementar soporte para asignación de 2° docente / Dupla por asignatura (ej. Taller)
+- [x] 7.2B.6 Agregar acceso directo en navegación principal (`dashboard.html` / `app.js`) y sincronizar con el panel de armado de horarios
 
 ### 7.3 Persistencia y Sincronización
 *Garantizar que los cambios se guarden correctamente*
 
-- [ ] 7.3.1 Implementar auto-guardado en cada cambio de asignación
-- [ ] 7.3.2 Implementar carga de asignaciones existentes al abrir un grupo
+- [x] 7.3.1 Implementar auto-guardado en cada cambio de asignación
+- [x] 7.3.2 Implementar carga de asignaciones existentes al abrir un grupo
 
 ### 7.4 Validaciones y Reglas de Negocio
 *Aplicar las reglas del sistema y mostrar feedback*
 
-- [ ] 7.4.1 No superar carga horaria del docente
-- [ ] 7.4.2 No superponer docente en mismo horario (distinto grupo)
-- [ ] 7.4.3 No asignar docente con conflicto externo (otra institución)
-- [ ] 7.4.4 No más de 2 asignaturas por bloque (dupla)
-- [ ] 7.4.5 No más de 2 duplas por grupo
-- [ ] 7.4.6 Mostrar mensajes de error claros (no errores técnicos)
+- [x] 7.4.1 No superar carga horaria del docente
+- [x] 7.4.2 No superponer docente en mismo horario (distinto grupo)
+- [x] 7.4.3 No asignar docente con conflicto externo (otra institución)
+- [x] 7.4.4 No más de 2 asignaturas por bloque (dupla)
+- [x] 7.4.5 No más de 2 duplas por grupo
+- [x] 7.4.6 Mostrar mensajes de error claros (no errores técnicos)
 
 ---
 
