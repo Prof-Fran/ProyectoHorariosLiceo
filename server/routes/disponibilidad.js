@@ -1,20 +1,63 @@
 // ============================================================
 // routes/disponibilidad.js
-// Horarios ocupados del docente en otras instituciones
+// Horarios ocupados del docente en otras instituciones por turno
 // ============================================================
 
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 
+// ── Auto-migración defensiva para asegurar columna id_turno ──
+(async () => {
+  try {
+    await db.query(`
+      ALTER TABLE disponibilidad_docente 
+      ADD COLUMN IF NOT EXISTS id_turno INTEGER REFERENCES turnos(id) ON DELETE CASCADE;
+    `);
+
+    // Asignar primer turno si quedaron registros sin turno asignado
+    await db.query(`
+      UPDATE disponibilidad_docente 
+      SET id_turno = (SELECT id FROM turnos ORDER BY id LIMIT 1) 
+      WHERE id_turno IS NULL;
+    `);
+
+    // Ajustar constraint UNIQUE para incluir id_turno
+    await db.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint 
+          WHERE conname = 'disponibilidad_docente_id_docente_dia_semana_numero_hora_key'
+        ) THEN
+          ALTER TABLE disponibilidad_docente 
+          DROP CONSTRAINT disponibilidad_docente_id_docente_dia_semana_numero_hora_key;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint 
+          WHERE conname = 'disponibilidad_docente_docente_turno_dia_hora_key'
+        ) THEN
+          ALTER TABLE disponibilidad_docente 
+          ADD CONSTRAINT disponibilidad_docente_docente_turno_dia_hora_key 
+          UNIQUE (id_docente, id_turno, dia_semana, numero_hora);
+        END IF;
+      END $$;
+    `);
+  } catch (err) {
+    console.warn('Verificación de esquema en disponibilidad_docente:', err.message);
+  }
+})();
+
 // GET /api/disponibilidad — Todos los registros
 router.get('/', async (req, res) => {
   try {
     const resultado = await db.query(`
-      SELECT dd.*, d.nombre AS docente_nombre, d.apellido AS docente_apellido
+      SELECT dd.*, d.nombre AS docente_nombre, d.apellido AS docente_apellido, t.nombre AS turno_nombre
       FROM disponibilidad_docente dd
       JOIN docentes d ON d.id = dd.id_docente
-      ORDER BY dd.id_docente, dd.dia_semana, dd.numero_hora
+      LEFT JOIN turnos t ON t.id = dd.id_turno
+      ORDER BY dd.id_docente, dd.id_turno, dd.dia_semana, dd.numero_hora
     `);
     res.json(resultado.rows);
   } catch (error) {
@@ -22,18 +65,92 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/disponibilidad/por_docente/:id_docente — Disponibilidad de un docente
+// GET /api/disponibilidad/por_docente/:id_docente — Disponibilidad de un docente para todos sus turnos
 router.get('/por_docente/:id_docente', async (req, res) => {
   try {
     const { id_docente } = req.params;
     const resultado = await db.query(`
-      SELECT * FROM disponibilidad_docente
-      WHERE id_docente = $1
-      ORDER BY dia_semana, numero_hora
+      SELECT dd.*, t.nombre AS turno_nombre
+      FROM disponibilidad_docente dd
+      LEFT JOIN turnos t ON t.id = dd.id_turno
+      WHERE dd.id_docente = $1
+      ORDER BY dd.id_turno, dd.dia_semana, dd.numero_hora
     `, [id_docente]);
     res.json(resultado.rows);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener disponibilidad del docente' });
+  }
+});
+
+// GET /api/disponibilidad/por_docente_turno/:id_docente/:id_turno — Disponibilidad de un docente para un turno
+router.get('/por_docente_turno/:id_docente/:id_turno', async (req, res) => {
+  try {
+    const { id_docente, id_turno } = req.params;
+    const resultado = await db.query(`
+      SELECT * FROM disponibilidad_docente
+      WHERE id_docente = $1 AND id_turno = $2
+      ORDER BY dia_semana, numero_hora
+    `, [id_docente, id_turno]);
+    res.json(resultado.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener disponibilidad del docente en el turno' });
+  }
+});
+
+// PUT /api/disponibilidad/guardar_turno — Guardado atómico/batch de disponibilidad por docente y turno
+// Body: { id_docente, id_turno, cambios: [ { dia_semana, numero_hora, ocupado } ] }
+router.put('/guardar_turno', async (req, res) => {
+  const cliente = await db.connect();
+  try {
+    const { id_docente, id_turno, cambios } = req.body;
+    if (!id_docente || !id_turno || !Array.isArray(cambios)) {
+      return res.status(400).json({ error: 'id_docente, id_turno y lista de cambios son obligatorios' });
+    }
+
+    await cliente.query('BEGIN');
+
+    for (const c of cambios) {
+      const { dia_semana, numero_hora, ocupado } = c;
+      await cliente.query(`
+        INSERT INTO disponibilidad_docente (id_docente, id_turno, dia_semana, numero_hora, ocupado)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (id_docente, id_turno, dia_semana, numero_hora)
+        DO UPDATE SET ocupado = EXCLUDED.ocupado
+      `, [id_docente, id_turno, dia_semana, numero_hora, !!ocupado]);
+    }
+
+    await cliente.query('COMMIT');
+    res.json({ ok: true, mensaje: `Disponibilidad actualizada (${cambios.length} cambios aplicados)` });
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    console.error('Error al guardar disponibilidad por turno:', error);
+    res.status(500).json({ error: 'Error al guardar la disponibilidad en la base de datos' });
+  } finally {
+    cliente.release();
+  }
+});
+
+// PUT /api/disponibilidad/upsert — Crear o actualizar una celda individual
+// Body: { id_docente, id_turno, dia_semana, numero_hora, ocupado }
+router.put('/upsert', async (req, res) => {
+  try {
+    const { id_docente, id_turno, dia_semana, numero_hora, ocupado } = req.body;
+    if (!id_docente || !dia_semana || !numero_hora || ocupado === undefined) {
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    }
+
+    const turnoFinal = id_turno || (await db.query('SELECT id FROM turnos ORDER BY id LIMIT 1')).rows[0]?.id;
+
+    const resultado = await db.query(`
+      INSERT INTO disponibilidad_docente (id_docente, id_turno, dia_semana, numero_hora, ocupado)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (id_docente, id_turno, dia_semana, numero_hora)
+      DO UPDATE SET ocupado = EXCLUDED.ocupado
+      RETURNING *
+    `, [id_docente, turnoFinal, dia_semana, numero_hora, ocupado]);
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar disponibilidad' });
   }
 });
 
@@ -54,7 +171,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/disponibilidad — Marcar un bloque como ocupado
 router.post('/', async (req, res) => {
   try {
-    const { id_docente, dia_semana, numero_hora, ocupado } = req.body;
+    const { id_docente, id_turno, dia_semana, numero_hora, ocupado } = req.body;
     if (!id_docente || !dia_semana || !numero_hora) {
       return res.status(400).json({ error: 'id_docente, dia_semana y numero_hora son obligatorios' });
     }
@@ -65,44 +182,23 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'numero_hora debe ser mayor a 0' });
     }
 
+    const turnoFinal = id_turno || (await db.query('SELECT id FROM turnos ORDER BY id LIMIT 1')).rows[0]?.id;
     const estaOcupado = ocupado !== undefined ? ocupado : true;
 
     const resultado = await db.query(`
-      INSERT INTO disponibilidad_docente (id_docente, dia_semana, numero_hora, ocupado)
-      VALUES ($1, $2, $3, $4) RETURNING *
-    `, [id_docente, dia_semana, numero_hora, estaOcupado]);
+      INSERT INTO disponibilidad_docente (id_docente, id_turno, dia_semana, numero_hora, ocupado)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `, [id_docente, turnoFinal, dia_semana, numero_hora, estaOcupado]);
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'Ya existe un registro para ese docente, día y hora' });
+      return res.status(409).json({ error: 'Ya existe un registro para ese docente, turno, día y hora' });
     }
     res.status(500).json({ error: 'Error al registrar disponibilidad' });
   }
 });
 
-// PUT /api/disponibilidad/upsert — Crear o actualizar (usado desde la grilla)
-// Body: { id_docente, dia_semana, numero_hora, ocupado }
-// Debe definirse ANTES de la ruta PUT /:id para que la coincida correctamente
-router.put('/upsert', async (req, res) => {
-  try {
-    const { id_docente, dia_semana, numero_hora, ocupado } = req.body;
-    if (!id_docente || !dia_semana || !numero_hora || ocupado === undefined) {
-      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-    }
-    const resultado = await db.query(`
-      INSERT INTO disponibilidad_docente (id_docente, dia_semana, numero_hora, ocupado)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (id_docente, dia_semana, numero_hora)
-      DO UPDATE SET ocupado = EXCLUDED.ocupado
-      RETURNING *
-    `, [id_docente, dia_semana, numero_hora, ocupado]);
-    res.json(resultado.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar disponibilidad' });
-  }
-});
-
-// PUT /api/disponibilidad/:id — Actualizar estado de un bloque
+// PUT /api/disponibilidad/:id — Actualizar estado de un bloque por ID
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;

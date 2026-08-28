@@ -149,10 +149,11 @@ CREATE TABLE asignacion_docente (
 CREATE TABLE disponibilidad_docente (
     id          SERIAL PRIMARY KEY,
     id_docente  INTEGER NOT NULL REFERENCES docentes(id) ON DELETE CASCADE,
+    id_turno    INTEGER NOT NULL REFERENCES turnos(id)   ON DELETE CASCADE,
     dia_semana  INTEGER NOT NULL CHECK (dia_semana BETWEEN 1 AND 5),
     numero_hora INTEGER NOT NULL CHECK (numero_hora > 0),
     ocupado     BOOLEAN NOT NULL DEFAULT TRUE,
-    UNIQUE (id_docente, dia_semana, numero_hora)
+    UNIQUE (id_docente, id_turno, dia_semana, numero_hora)
 );
 
 -- ============================================================

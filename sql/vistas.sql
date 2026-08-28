@@ -86,6 +86,7 @@ SELECT
     d.id            AS id_docente,
     d.nombre        AS docente_nombre,
     d.apellido      AS docente_apellido,
+    dd.id_turno     AS id_turno,
     dd.dia_semana   AS dia_semana,
     dd.numero_hora  AS numero_hora,
     'externo'       AS tipo_ocupacion,
@@ -101,12 +102,14 @@ SELECT
     d.id            AS id_docente,
     d.nombre        AS docente_nombre,
     d.apellido      AS docente_apellido,
+    g.id_turno      AS id_turno,
     hg.dia_semana   AS dia_semana,
     hg.numero_hora  AS numero_hora,
     'interno'       AS tipo_ocupacion,
     hg.id_grupo     AS id_grupo
 FROM horario_grupo hg
+JOIN grupos              g  ON g.id  = hg.id_grupo
 JOIN asignacion_docente  ad ON ad.id = hg.id_grupo_docente
 JOIN docente_asignatura  da ON da.id = ad.id_docente_asignatura
 JOIN docentes            d  ON d.id  = da.id_docente
-ORDER BY id_docente, dia_semana, numero_hora;
+ORDER BY id_docente, id_turno, dia_semana, numero_hora;

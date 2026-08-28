@@ -27,11 +27,16 @@ async function validarInsercion({ idGrupo, diaSemana, numeroHora, idGrupoDocente
     return { valido: false, mensaje: 'La asignación de docente indicada no existe' };
   }
 
-  // Regla 1: verificar que el docente no esté ocupado externamente
+  // Regla 1: verificar que el docente no esté ocupado externamente en el turno del grupo
   const ocupadoExterno = await db.query(`
-    SELECT id FROM disponibilidad_docente
-    WHERE id_docente = $1 AND dia_semana = $2 AND numero_hora = $3 AND ocupado = TRUE
-  `, [idDocente, diaSemana, numeroHora]);
+    SELECT dd.id FROM disponibilidad_docente dd
+    JOIN grupos g ON g.id = $4
+    WHERE dd.id_docente = $1 
+      AND (dd.id_turno = g.id_turno OR dd.id_turno IS NULL)
+      AND dd.dia_semana = $2 
+      AND dd.numero_hora = $3 
+      AND dd.ocupado = TRUE
+  `, [idDocente, diaSemana, numeroHora, idGrupo]);
 
   if (ocupadoExterno.rows.length > 0) {
     return {
