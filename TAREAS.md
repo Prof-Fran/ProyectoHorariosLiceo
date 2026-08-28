@@ -135,27 +135,52 @@
 
 ## 📅 FASE 7 — Armado de Horarios (Módulo Principal)
 
-- [ ] Crear pantalla de selección de grupo para armar
-- [ ] Implementar panel superior (info del grupo: nivel, turno)
-- [ ] Implementar panel izquierdo: grilla semanal del grupo
-  - [ ] Columnas: días (lun–vie)
-  - [ ] Filas: horas según turno
-  - [ ] Celdas con colores según estado
-  - [ ] Soporte para duplas (dos asignaturas por celda)
-- [ ] Implementar panel derecho: lista de docentes
-  - [ ] Ordenados por grado (desc) y puntaje (desc)
-  - [ ] Mostrar: asignatura, horas asignadas, horas restantes
-- [ ] Implementar asignación por clic en docente + celda de grilla
-- [ ] Implementar eliminación de asignación desde la celda
-- [ ] Implementar auto-guardado en cada cambio
-- [ ] Implementar actualización automática de contadores al cambiar asignación
-- [ ] Implementar validaciones en tiempo real:
-  - [ ] No superar carga horaria
-  - [ ] No superponer docente en mismo horario (distinto grupo)
-  - [ ] No asignar docente con conflicto externo
-  - [ ] No más de 2 asignaturas por bloque (dupla)
-  - [ ] No más de 2 duplas por grupo
-- [ ] Mostrar mensajes de error claros (no errores técnicos)
+### 7.1 Interfaz de Usuario (UI)
+*Crear la estructura visual del módulo*
+
+- [x] 7.1.1 Crear pantalla de selección de grupo para armar
+- [x] 7.1.2 Implementar panel superior (info del grupo: nivel, turno)
+- [x] 7.1.3 Implementar panel izquierdo: grilla semanal del grupo
+  - [x] Columnas: días (lun–vie)
+  - [x] Filas: horas según turno
+  - [x] Celdas con colores según estado
+- [x] 7.1.4 Implementar panel derecho: lista de docentes
+  - [x] Ordenados por grado (desc) y puntaje (desc)
+  - [x] Mostrar: asignatura, horas asignadas, horas restantes
+
+### 7.2 Funcionalidad de Asignación
+*Implementar la lógica de asignación y eliminación*
+
+- [x] 7.2.1 Implementar asignación por clic en docente + celda de grilla
+- [x] 7.2.2 Implementar eliminación de asignación desde la celda
+- [x] 7.2.3 Implementar soporte para duplas (dos asignaturas por celda)
+- [x] 7.2.4 Implementar actualización automática de contadores al cambiar asignación
+
+### 7.2B Asignación de Docentes a Grupos
+*Pantalla intermedia para asignar docentes antes del armado*
+
+- [x] 7.2B.1 Crear endpoints para obtener docentes disponibles/asignados al grupo
+- [x] 7.2B.2 Crear pantalla intermedia "Asignar Docentes al Grupo"
+- [x] 7.2B.3 Implementar lógica de asignación/desasignación de docentes al grupo
+- [x] 7.2B.4 Agregar botón para administrar docentes desde el panel de armado
+- [x] 7.2B.5 Agregar aviso cuando no hay docentes asignados al grupo
+- [x] 7.2B.6 Filtrar docentes en el armado según asignación al grupo
+
+### 7.3 Persistencia y Sincronización
+*Garantizar que los cambios se guarden correctamente*
+
+- [ ] 7.3.1 Implementar auto-guardado en cada cambio de asignación
+- [ ] 7.3.2 Implementar carga de asignaciones existentes al abrir un grupo
+
+### 7.4 Validaciones y Reglas de Negocio
+*Aplicar las reglas del sistema y mostrar feedback*
+
+- [ ] 7.4.1 No superar carga horaria del docente
+- [ ] 7.4.2 No superponer docente en mismo horario (distinto grupo)
+- [ ] 7.4.3 No asignar docente con conflicto externo (otra institución)
+- [ ] 7.4.4 No más de 2 asignaturas por bloque (dupla)
+- [ ] 7.4.5 No más de 2 duplas por grupo
+- [ ] 7.4.6 Mostrar mensajes de error claros (no errores técnicos)
 
 ---
 
@@ -180,5 +205,5 @@
 ---
 
 **Total de tareas principales:** 70+  
-**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas
+**Estado general del proyecto:** 🟡 En progreso — Fases 1–6 completadas, Fase 7.1-7.2-7.2B completadas
 

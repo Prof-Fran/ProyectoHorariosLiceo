@@ -52,6 +52,77 @@ router.get('/por_grupo/:id_grupo', async (req, res) => {
   }
 });
 
+// GET /api/asignacion_docente/disponibles_grupo/:id_grupo — Docentes NO asignados al grupo pero con asignaturas del nivel
+router.get('/disponibles_grupo/:id_grupo', async (req, res) => {
+  try {
+    const { id_grupo } = req.params;
+
+    // Obtener el nivel del grupo
+    const grupoRes = await db.query('SELECT id_nivel FROM grupos WHERE id = $1', [id_grupo]);
+    if (grupoRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado' });
+    }
+    const idNivel = grupoRes.rows[0].id_nivel;
+
+    // Obtener docentes que tienen asignaturas para este nivel
+    // pero que NO están asignados a este grupo específico
+    const resultado = await db.query(`
+      SELECT DISTINCT d.id, d.nombre, d.apellido, d.cedula,
+             array_agg(DISTINCT a.nombre) AS asignaturas_nombres,
+             array_agg(DISTINCT a.id) AS asignaturas_ids,
+             array_agg(DISTINCT jsonb_build_object(
+               'id', a.id,
+               'nombre', a.nombre,
+               'carga_horaria', a.carga_horaria
+             )) AS asignaturas
+      FROM docentes d
+      JOIN docente_asignatura da ON da.id_docente = d.id
+      JOIN asignaturas a ON a.id = da.id_asignatura
+      WHERE a.id_nivel = $1
+        AND d.id NOT IN (
+          SELECT d2.id
+          FROM docentes d2
+          JOIN docente_asignatura da2 ON da2.id_docente = d2.id
+          JOIN asignacion_docente ad ON ad.id_docente_asignatura = da2.id
+          WHERE ad.id_grupo = $1
+        )
+      GROUP BY d.id, d.nombre, d.apellido, d.cedula
+      ORDER BY d.apellido, d.nombre
+    `, [id_grupo]);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener docentes disponibles:', error);
+    res.status(500).json({ error: 'Error al obtener docentes disponibles' });
+  }
+});
+
+// GET /api/asignacion_docente/por_grupo_con_detalle/:id_grupo — Asignaciones del grupo con info completa del docente
+router.get('/por_grupo_con_detalle/:id_grupo', async (req, res) => {
+  try {
+    const { id_grupo } = req.params;
+    const resultado = await db.query(`
+      SELECT ad.id AS id_asignacion, ad.id_grupo, ad.id_asignatura,
+             a.nombre AS asignatura_nombre, a.carga_horaria,
+             d.id AS id_docente, d.nombre AS docente_nombre, d.apellido AS docente_apellido, d.cedula,
+             da.id AS id_docente_asignatura, da.grado, da.puntaje, da.efectivo,
+             n.nombre AS nivel_nombre
+      FROM asignacion_docente ad
+      JOIN asignaturas a ON a.id = ad.id_asignatura
+      JOIN docente_asignatura da ON da.id = ad.id_docente_asignatura
+      JOIN docentes d ON d.id = da.id_docente
+      JOIN niveles n ON n.id = a.id_nivel
+      WHERE ad.id_grupo = $1
+      ORDER BY d.apellido, d.nombre, a.nombre
+    `, [id_grupo]);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener asignaciones del grupo:', error);
+    res.status(500).json({ error: 'Error al obtener asignaciones del grupo' });
+  }
+});
+
 // GET /api/asignacion_docente/:id — Una asignación por ID
 router.get('/:id', async (req, res) => {
   try {

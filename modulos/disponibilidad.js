@@ -3,7 +3,7 @@
 // Fase 6: Grilla semanal de horas ocupadas en otras instituciones
 // El usuario selecciona un docente y un turno; la grilla muestra
 // Lunes–Viernes × horas del turno. Cada celda marca si el docente
-// está ocupado fuera del liceo en ese bloque. Se auto-guarda.
+// está ocupado fuera del liceo en ese bloque. Se guarda al confirmar.
 // Depende de: js/ui.js, css/estilos.css, css/dashboard.css,
 //             css/horario.css (sección disponibles)
 // ============================================================
@@ -187,17 +187,121 @@ window.Modulo_disponibilidad = (() => {
   }
 
   function _manejarCambioDocente(e) {
-    _docenteId = Number(e.target.value) || null;
-    _intentarMostrarGrilla();
+    const nuevoId = Number(e.target.value) || null;
+    if (_cambios.size > 0) {
+      _preguntarCambiosPendientes(() => {
+        _docenteId = nuevoId;
+        _intentarMostrarGrilla();
+      }, () => {
+        document.getElementById('disp-select-docente').value = _docenteId || '';
+      });
+    } else {
+      _docenteId = nuevoId;
+      _intentarMostrarGrilla();
+    }
   }
 
   function _manejarCambioTurno(e) {
-    _turnoId = Number(e.target.value) || null;
-    _intentarMostrarGrilla();
+    const nuevoId = Number(e.target.value) || null;
+    if (_cambios.size > 0) {
+      _preguntarCambiosPendientes(() => {
+        _turnoId = nuevoId;
+        _intentarMostrarGrilla();
+      }, () => {
+        document.getElementById('disp-select-turno').value = _turnoId || '';
+      });
+    } else {
+      _turnoId = nuevoId;
+      _intentarMostrarGrilla();
+    }
   }
 
   function _intentarMostrarGrilla() {
     if (_docenteId && _turnoId) _cargarGrilla();
+  }
+
+  function _preguntarCambiosPendientes(onConfirmar, onCancelar) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+
+    overlay.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-header">
+          <div style="display:flex;align-items:center;gap:.65rem;">
+            <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)" aria-hidden="true"></i>
+            <span class="modal-titulo">Cambios sin guardar</span>
+          </div>
+          <button class="modal-cerrar" id="modal-disp-cerrar" aria-label="Cerrar modal">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:var(--text-base);color:var(--text-muted);line-height:1.7;">
+            Tenés ${_cambios.size} cambio${_cambios.size > 1 ? 's' : ''} sin guardar. ¿Qué deseás hacer?
+          </p>
+        </div>
+        <div class="modal-footer" style="gap:.5rem;">
+          <button class="btn btn-secondary" id="modal-disp-cancelar">Cancelar</button>
+          <button class="btn btn-danger" id="modal-disp-descartar">
+            <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+            Descartar
+          </button>
+          <button class="btn btn-primary" id="modal-disp-guardar">
+            <i class="fa-solid fa-check" aria-hidden="true"></i>
+            Guardar
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.querySelector('#modal-disp-cancelar')?.focus());
+
+    const cerrar = () => {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.18s ease';
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('#modal-disp-guardar')?.addEventListener('click', async () => {
+      cerrar();
+      await _confirmarGuardado();
+      onConfirmar();
+    });
+
+    overlay.querySelector('#modal-disp-descartar')?.addEventListener('click', () => {
+      cerrar();
+      _cambios = new Map();
+      onConfirmar();
+    });
+
+    overlay.querySelector('#modal-disp-cancelar')?.addEventListener('click', () => {
+      cerrar();
+      onCancelar();
+    });
+
+    overlay.querySelector('#modal-disp-cerrar')?.addEventListener('click', () => {
+      cerrar();
+      onCancelar();
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        cerrar();
+        onCancelar();
+      }
+    });
+
+    const onKeydown = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', onKeydown);
+        cerrar();
+        onCancelar();
+      }
+    };
+    document.addEventListener('keydown', onKeydown);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -218,10 +322,13 @@ window.Modulo_disponibilidad = (() => {
 
       _horasTurno = await rHoras.json();
 
-      // Estado actual: iniciar con lo que ya está guardado en la BD
+      // Estado actual: iniciar solo con los registros que correspondan al turno seleccionado
       _estadoActual = new Map();
+      const horasTurnoSet = new Set(_horasTurno.map(h => h.numero_hora));
       (await rDisp.json()).forEach(reg => {
-        _estadoActual.set(`${reg.dia_semana}:${reg.numero_hora}`, true);
+        if (horasTurnoSet.has(reg.numero_hora)) {
+          _estadoActual.set(`${reg.dia_semana}:${reg.numero_hora}`, true);
+        }
       });
 
       // Limpiar cambios pendientes de una sesión anterior
