@@ -19,8 +19,6 @@ window.Modulo_armado = (() => {
   let _horarioGrupo    = [];    // Asignaciones del grupo actual
   let _docenteSeleccionado = null; // Docente seleccionado para asignar
   let _asignaturaSeleccionada = null; // Asignatura del docente seleccionado
-  let _docenteOcupacionExterna = {}; // Mapa celda "dia:hora" -> ocupado en otra institución
-  let _docenteOcupacionInterna = {}; // Mapa celda "dia:hora" -> ocupado en otro grupo del liceo
   let _docentesAsignadosGrupo = []; // Docentes asignados al grupo actual
   let _docentesDisponiblesNivel = []; // Docentes disponibles del nivel
 
@@ -41,7 +39,7 @@ window.Modulo_armado = (() => {
   const URL_DISPONIBLES_GRUPO = (idGrupo) => `${App.API_BASE}/asignacion_docente/disponibles_grupo/${idGrupo}`;
   const URL_ASIG_DOC_CREAR = () => `${App.API_BASE}/asignacion_docente`;
   const URL_ASIG_DOC_ELIMINAR = (id) => `${App.API_BASE}/asignacion_docente/${id}`;
-  const URL_DISPONIBILIDAD_DOCENTE = (idDocente) => `${App.API_BASE}/disponibilidad/completa_docente/${idDocente}`;
+  const URL_DISPONIBILIDAD_DOCENTE_TURNO = (idDocente, idTurno) => `${App.API_BASE}/disponibilidad/por_docente_turno/${idDocente}/${idTurno}`;
 
   // ════════════════════════════════════════════════════════════
   //  RENDERIZADO PRINCIPAL
@@ -223,47 +221,6 @@ window.Modulo_armado = (() => {
       }
     });
     await Promise.all(promesas);
-  }
-
-  // ════════════════════════════════════════════════════════════
-  //  Cargar disponibilidad del docente en el turno del grupo
-  // ════════════════════════════════════════════════════════════
-
-  async function _cargarDisponibilidadDocente() {
-    if (!_grupoActual || !_docenteSeleccionado) return;
-
-    try {
-      const res = await fetch(URL_DISPONIBILIDAD_DOCENTE(_docenteSeleccionado.id));
-      if (!res.ok) throw new Error('Error al obtener disponibilidad');
-
-      const { externos, internos } = await res.json();
-      const idTurno = _grupoActual.id_turno;
-
-      // Mapa de ocupación externa por celda: "dia:numhora" -> true si está ocupado en otra institución
-      _docenteOcupacionExterna = {};
-      (externos || [])
-        .filter(reg => reg.id_turno == null || reg.id_turno === idTurno)
-        .forEach(reg => {
-          const clave = `${reg.dia_semana}:${reg.numero_hora}`;
-          _docenteOcupacionExterna[clave] = true;
-        });
-
-      // Mapa de ocupación interna por celda: "dia:numhora" -> true si dicta clase en otro grupo del liceo
-      // Se excluye el grupo actual: las celdas ya ocupadas por el docente en este grupo
-      // se controlan con el horario local (_horarioGrupo)
-      _docenteOcupacionInterna = {};
-      (internos || [])
-        .filter(reg => (reg.id_turno == null || reg.id_turno === idTurno) && reg.id_grupo !== _grupoActual.id)
-        .forEach(reg => {
-          const clave = `${reg.dia_semana}:${reg.numero_hora}`;
-          _docenteOcupacionInterna[clave] = true;
-        });
-
-    } catch (error) {
-      console.error('Error al cargar disponibilidad del docente:', error);
-      _docenteOcupacionExterna = {};
-      _docenteOcupacionInterna = {};
-    }
   }
 
   // ════════════════════════════════════════════════════════════
@@ -1094,8 +1051,6 @@ window.Modulo_armado = (() => {
   function _deseleccionarDocente() {
     _docenteSeleccionado = null;
     _asignaturaSeleccionada = null;
-    _docenteOcupacionExterna = {};
-    _docenteOcupacionInterna = {};
 
     document.querySelectorAll('.docente-card.seleccionado').forEach(c => {
       c.classList.remove('seleccionado');
@@ -1187,38 +1142,23 @@ window.Modulo_armado = (() => {
     document.querySelectorAll('.celda-horario.docente-disponible').forEach(c => {
       c.classList.remove('docente-disponible');
     });
-    // Remover resaltado anterior de ocupación externa
-    document.querySelectorAll('.celda-horario.ocupado-externo').forEach(c => {
-      c.classList.remove('ocupado-externo');
-    });
     // Remover resaltado por selección de celda (diferente color)
     document.querySelectorAll('.celda-horario.seleccionada').forEach(c => {
       c.classList.remove('seleccionada');
     });
 
-    // Resaltar celdas donde se puede asignar considerando disponibilidad del docente
+    // Resaltar celdas vacías donde se puede asignar (con color verde docente)
+    // Solo si el docente seleccionado NO tiene asignaciones en esa celda
     document.querySelectorAll('.celda-horario').forEach(celda => {
       const dia = Number(celda.dataset.dia);
       const hora = Number(celda.dataset.hora);
-      const clave = `${dia}:${hora}`;
-      const ocupacionExterna = _docenteOcupacionExterna && _docenteOcupacionExterna[clave];
-      const ocupacionInterna = _docenteOcupacionInterna && _docenteOcupacionInterna[clave];
       const asignacionesDelDocente = _obtenerAsignacionesDocenteEnCelda(dia, hora, _docenteSeleccionado.id);
 
-      // Si el docente está ocupado (otra institución u otro grupo del liceo), NO es seleccionable
-      if (ocupacionExterna || ocupacionInterna) {
-        celda.classList.add('ocupado-externo');
-        celda.classList.remove('docente-disponible');
-        return;
-      }
-
-      // Si el docente está libre, marcar verde solo si no tiene nada en esa celda del grupo actual
+      // Solo resaltar si el docente seleccionado NO está en esa celda y la celda no tiene 2 asignaciones llenas
+      // Esto significa: celda vacía para este docente O celda con asignaciones de OTROS docentes (aunque no sea verde, al menos no bloquea)
+      // La regla correcta: poner verde solo si el docente NO tiene nada en esa celda
       if (asignacionesDelDocente.length === 0) {
         celda.classList.add('docente-disponible');
-        celda.classList.remove('ocupado-externo');
-      } else {
-        celda.classList.remove('docente-disponible');
-        celda.classList.remove('ocupado-externo');
       }
     });
   }
@@ -1267,14 +1207,19 @@ window.Modulo_armado = (() => {
     try {
       if (!_grupoActual || !_grupoActual.id_turno) return null;
 
-      const clave = `${dia}:${hora}`;
+      // Verificar disponibilidad del docente (otra institución en el turno del grupo actual)
+      const res = await fetch(`${App.API_BASE}/disponibilidad/por_docente_turno/${idDocente}/${_grupoActual.id_turno}`);
+      if (!res.ok) return null;
 
-      if (_docenteOcupacionExterna && _docenteOcupacionExterna[clave]) {
+      const disponibilidad = await res.json();
+      const ocupado = disponibilidad.find(d =>
+        d.dia_semana === dia &&
+        d.numero_hora === hora &&
+        d.ocupado === true
+      );
+
+      if (ocupado) {
         return 'El docente está ocupado en otra institución en ese horario.';
-      }
-
-      if (_docenteOcupacionInterna && _docenteOcupacionInterna[clave]) {
-        return 'El docente ya está asignado en otro grupo del liceo en ese horario.';
       }
 
       return null;

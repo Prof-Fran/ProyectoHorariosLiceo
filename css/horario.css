@@ -302,6 +302,21 @@
   transform: scale(0.97);
 }
 
+/* Celdas disponibles para el docente seleccionado (verde) */
+.celda-horario.docente-disponible .celda-inner {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25) !important;
+  transform: scale(0.97) !important;
+}
+
+/* Celdas no disponibles para el docente seleccionado (ocupado externo / otro grupo) */
+.celda-horario.ocupado-externo .celda-inner {
+  background: var(--estado-ocupado-ext-bg);
+  border-color: var(--estado-ocupado-ext-bdr);
+  cursor: not-allowed;
+}
+
 /* ── Contenido de una celda asignada ────────────────────────── */
 .celda-asignacion {
   width: 100%;
