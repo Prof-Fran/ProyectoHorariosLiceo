@@ -12,6 +12,7 @@ window.Modulo_docentes = (() => {
   // ── Estado interno del módulo ─────────────────────────────────
   let _contenedor    = null;  // Elemento raíz
   let _docentes      = [];    // Cache completo de docentes
+  let _docentesOriginal = []; // Copia original para restaurar la búsqueda
   let _niveles       = [];    // Cache de niveles (para añadir asignaturas)
   let _asignaturas   = [];    // Cache de asignaturas (select por nivel)
   let _docenteActual = null;  // Docente en el panel de detalle
@@ -46,6 +47,16 @@ window.Modulo_docentes = (() => {
              </button>`
           )}
 
+          <div class="doc-busqueda-wrap">
+            <input
+              type="text"
+              id="doc-busqueda"
+              class="campo-input doc-busqueda-input"
+              placeholder="Buscar por nombre, apellido o cédula..."
+              aria-label="Buscar docente"
+            />
+          </div>
+
           <div id="doc-tabla-wrap"></div>
 
         </div>
@@ -62,6 +73,9 @@ window.Modulo_docentes = (() => {
 
     document.getElementById('btn-nuevo-doc')
       ?.addEventListener('click', _abrirFormularioNuevo);
+
+    document.getElementById('doc-busqueda')
+      ?.addEventListener('input', _filtrarDocentes);
 
     await _cargarDatos();
   }
@@ -84,6 +98,7 @@ window.Modulo_docentes = (() => {
       if (!rDoc.ok || !rNiv.ok || !rAsig.ok) throw new Error('Error al obtener datos');
 
       _docentes    = await rDoc.json();
+      _docentesOriginal = [..._docentes];
       _niveles     = await rNiv.json();
       _asignaturas = await rAsig.json();
 
@@ -106,6 +121,10 @@ window.Modulo_docentes = (() => {
     const wrap = document.getElementById('doc-tabla-wrap');
     if (!wrap) return;
 
+    // Mostrar u ocultar mensaje de "no hay resultados" basado en la búsqueda actual
+    const textoBusqueda = document.getElementById('doc-busqueda')?.value?.trim() || '';
+    const hayResultados = textoBusqueda ? _docentes.length > 0 : _docentesOriginal.length > 0;
+
     UI.renderizarTabla(
       wrap,
       [
@@ -120,10 +139,12 @@ window.Modulo_docentes = (() => {
           render: (fila) => `<span style="color:var(--text-muted);font-size:var(--text-sm)">${_esc(fila.cedula)}</span>`,
         },
       ],
-      _docentes,
+      textoBusqueda ? _docentes : _docentesOriginal,
       {
-        textoVacio: 'No hay docentes registrados. Creá el primero.',
-        idVacio:    'fa-solid fa-chalkboard-user',
+        textoVacio: hayResultados
+          ? 'No hay docentes coincidentes con tu búsqueda.'
+          : 'No hay docentes registrados. Creá el primero.',
+        idVacio:    hayResultados ? 'fa-solid fa-chalkboard-user' : 'fa-solid fa-chalkboard-user',
         acciones: (fila) =>
           UI.btnVer(fila.id, `Ver asignaturas de ${fila.nombre} ${fila.apellido}`) +
           UI.btnEditar(fila.id, `Editar ${fila.nombre} ${fila.apellido}`) +
@@ -132,6 +153,30 @@ window.Modulo_docentes = (() => {
     );
 
     wrap.addEventListener('click', _manejarClickTabla, { once: true });
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //  BÚSQUEDA DE DOCENTES
+  // ═════════════════════════════════════════════════════════════
+
+  function _filtrarDocentes() {
+    const texto = document.getElementById('doc-busqueda')?.value?.trim() || '';
+
+    if (!texto) {
+      // Sin búsqueda: restaurar la lista original y re-renderizar
+      _docentes = [..._docentesOriginal];
+      _renderizarTabla();
+      return;
+    }
+
+    const bajo = texto.toLowerCase();
+    _docentes = _docentesOriginal.filter(docente =>
+      docente.nombre.toLowerCase().includes(bajo) ||
+      docente.apellido.toLowerCase().includes(bajo) ||
+      docente.cedula.toLowerCase().includes(bajo)
+    );
+
+    _renderizarTabla();
   }
 
   function _manejarClickTabla(e) {
