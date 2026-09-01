@@ -180,6 +180,7 @@
 - [x] Detección y validación de conflictos en tiempo real:
   - [x] Validación de superposición horaria del docente en otro grupo del liceo
   - [x] Validación de conflicto con disponibilidad externa (otra institución)
+  - [x] Resaltado visual diferenciado en la grilla al seleccionar docente (🟢 disponible, 🔵 clase en otro grupo del liceo con badge de grupo ej. 7°1, 🔴 otra institución)
   - [x] Control de tope de carga horaria semanal por asignatura
   - [x] Límite máximo de 2 asignaturas por bloque (dupla)
   - [x] Límite máximo de 2 duplas por grupo

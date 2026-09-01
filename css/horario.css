@@ -310,11 +310,65 @@
   transform: scale(0.97) !important;
 }
 
-/* Celdas no disponibles para el docente seleccionado (ocupado externo / otro grupo) */
+/* Celdas no disponibles para el docente seleccionado (ocupado en otra institución) */
 .celda-horario.ocupado-externo .celda-inner {
-  background: var(--estado-ocupado-ext-bg);
-  border-color: var(--estado-ocupado-ext-bdr);
+  background: var(--estado-ocupado-ext-bg) !important;
+  border-color: var(--estado-ocupado-ext-bdr) !important;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* Celdas ocupadas en otro grupo del liceo (azul liceo con badge) */
+.celda-horario.ocupado-interno .celda-inner {
+  background: var(--estado-ocupado-liceo-bg) !important;
+  border-color: var(--estado-ocupado-liceo-bdr) !important;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Contenedor de badge de ocupación al seleccionar docente */
+.celda-ocupacion-docente {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  pointer-events: none;
+  animation: fadeIn 0.15s ease;
+}
+
+.badge-grupo-ocupado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+}
+
+.badge-grupo-ocupado.badge-ext {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.subtexto-ocupado {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  max-width: 95px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 /* ── Contenido de una celda asignada ────────────────────────── */

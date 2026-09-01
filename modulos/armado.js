@@ -239,16 +239,19 @@ window.Modulo_armado = (() => {
       const { externos, internos } = await res.json();
       const idTurno = _grupoActual.id_turno;
 
-      // Mapa de ocupación externa por celda: "dia:numhora" -> true si está ocupado en otra institución
+      // Mapa de ocupación externa por celda: "dia:numhora" -> datos si está ocupado en otra institución
       _docenteOcupacionExterna = {};
       (externos || [])
         .filter(reg => reg.id_turno == null || reg.id_turno === idTurno)
         .forEach(reg => {
           const clave = `${reg.dia_semana}:${reg.numero_hora}`;
-          _docenteOcupacionExterna[clave] = true;
+          _docenteOcupacionExterna[clave] = {
+            tipo: 'externo',
+            id_turno: reg.id_turno
+          };
         });
 
-      // Mapa de ocupación interna por celda: "dia:numhora" -> true si dicta clase en otro grupo del liceo
+      // Mapa de ocupación interna por celda: "dia:numhora" -> datos del grupo y materia si dicta clase en otro grupo del liceo
       // Se excluye el grupo actual: las celdas ya ocupadas por el docente en este grupo
       // se controlan con el horario local (_horarioGrupo)
       _docenteOcupacionInterna = {};
@@ -256,7 +259,13 @@ window.Modulo_armado = (() => {
         .filter(reg => (reg.id_turno == null || reg.id_turno === idTurno) && reg.id_grupo !== _grupoActual.id)
         .forEach(reg => {
           const clave = `${reg.dia_semana}:${reg.numero_hora}`;
-          _docenteOcupacionInterna[clave] = true;
+          _docenteOcupacionInterna[clave] = {
+            tipo: 'interno',
+            id_grupo: reg.id_grupo,
+            grupo_nombre: reg.grupo_nombre,
+            asignatura_nombre: reg.asignatura_nombre,
+            id_turno: reg.id_turno
+          };
         });
 
     } catch (error) {
@@ -805,11 +814,23 @@ window.Modulo_armado = (() => {
         </span>
         <span class="leyenda-item">
           <span class="leyenda-dot leyenda-dot-liceo"></span>
-          Asignada
+          Asignada (este grupo)
         </span>
         <span class="leyenda-item">
           <span class="leyenda-dot" style="background:rgba(234,179,8,0.8)"></span>
           Dupla
+        </span>
+        <span class="leyenda-item">
+          <span class="leyenda-dot" style="background:#22c55e;"></span>
+          Disponible (Docente)
+        </span>
+        <span class="leyenda-item">
+          <span class="leyenda-dot" style="background:#3b82f6;"></span>
+          Otro grupo (Liceo)
+        </span>
+        <span class="leyenda-item">
+          <span class="leyenda-dot" style="background:#ef4444;"></span>
+          Otra institución
         </span>
       </div>
     `;
@@ -1105,13 +1126,26 @@ window.Modulo_armado = (() => {
       c.classList.remove('seleccionado');
     });
 
-    document.querySelectorAll('.celda-horario.seleccionada').forEach(c => {
-      c.classList.remove('seleccionada');
-    });
+    _restaurarGrillaNormal();
+  }
 
-    document.querySelectorAll('.celda-horario.docente-disponible').forEach(c => {
-      c.classList.remove('docente-disponible');
-    });
+  function _restaurarGrillaNormal() {
+    const tbody = document.querySelector('.tabla-horario tbody');
+    if (tbody) {
+      tbody.innerHTML = _renderizarFilasGrilla();
+
+      // Re-bind eventos de la grilla
+      document.querySelectorAll('.celda-horario').forEach(celda => {
+        celda.addEventListener('click', _manejarClickCelda);
+      });
+
+      document.querySelectorAll('.celda-btn-eliminar').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          _manejarEliminarAsignacion(btn.dataset.hgId);
+        });
+      });
+    }
   }
 
   function _mostrarSelectorAsignatura(docente, asignaturas) {
@@ -1187,42 +1221,95 @@ window.Modulo_armado = (() => {
   }
 
   function _resaltarCeldasDisponibles() {
-    // Remover resaltado anterior de docente
-    document.querySelectorAll('.celda-horario.docente-disponible').forEach(c => {
-      c.classList.remove('docente-disponible');
-    });
-    // Remover resaltado anterior de ocupación externa
-    document.querySelectorAll('.celda-horario.ocupado-externo').forEach(c => {
-      c.classList.remove('ocupado-externo');
-    });
-    // Remover resaltado por selección de celda (diferente color)
-    document.querySelectorAll('.celda-horario.seleccionada').forEach(c => {
-      c.classList.remove('seleccionada');
-    });
+    // Primero restauramos la grilla para tener el contenido base limpio
+    _restaurarGrillaNormal();
 
-    // Resaltar celdas donde se puede asignar considerando disponibilidad del docente
+    if (!_docenteSeleccionado) return;
+
+    // Resaltar celdas según la disponibilidad y ocupación del docente
     document.querySelectorAll('.celda-horario').forEach(celda => {
       const dia = Number(celda.dataset.dia);
       const hora = Number(celda.dataset.hora);
       const clave = `${dia}:${hora}`;
       const ocupacionExterna = _docenteOcupacionExterna && _docenteOcupacionExterna[clave];
       const ocupacionInterna = _docenteOcupacionInterna && _docenteOcupacionInterna[clave];
+      const asignacionesCelda = _obtenerAsignacionesCelda(dia, hora);
       const asignacionesDelDocente = _obtenerAsignacionesDocenteEnCelda(dia, hora, _docenteSeleccionado.id);
+      const celdaInner = celda.querySelector('.celda-inner');
 
-      // Si el docente está ocupado (otra institución u otro grupo del liceo), NO es seleccionable
-      if (ocupacionExterna || ocupacionInterna) {
-        celda.classList.add('ocupado-externo');
-        celda.classList.remove('docente-disponible');
+      // Caso 1: Celda vacía en el grupo actual
+      if (asignacionesCelda.length === 0) {
+        if (ocupacionInterna) {
+          celda.classList.add('ocupado-interno');
+          if (celdaInner) {
+            celdaInner.innerHTML = `
+              <div class="celda-ocupacion-docente">
+                <span class="badge-grupo-ocupado">
+                  <i class="fa-solid fa-school" aria-hidden="true"></i> ${_esc(ocupacionInterna.grupo_nombre)}
+                </span>
+                <span class="subtexto-ocupado">${_esc(ocupacionInterna.asignatura_nombre || 'Liceo')}</span>
+              </div>
+            `;
+          }
+          const materiaInfo = ocupacionInterna.asignatura_nombre ? ` (${ocupacionInterna.asignatura_nombre})` : '';
+          celda.setAttribute('title', `Ocupado en el liceo: Grupo ${ocupacionInterna.grupo_nombre}${materiaInfo}`);
+          return;
+        }
+
+        if (ocupacionExterna) {
+          celda.classList.add('ocupado-externo');
+          if (celdaInner) {
+            celdaInner.innerHTML = `
+              <div class="celda-ocupacion-docente">
+                <span class="badge-grupo-ocupado badge-ext">
+                  <i class="fa-solid fa-building" aria-hidden="true"></i> Ext.
+                </span>
+                <span class="subtexto-ocupado">Otra inst.</span>
+              </div>
+            `;
+          }
+          celda.setAttribute('title', 'No disponible (ocupado en otra institución)');
+          return;
+        }
+
+        // Disponible para asignar
+        celda.classList.add('docente-disponible');
+        celda.setAttribute('title', 'Disponible para asignar — Clic para asignar clase');
         return;
       }
 
-      // Si el docente está libre, marcar verde solo si no tiene nada en esa celda del grupo actual
-      if (asignacionesDelDocente.length === 0) {
+      // Caso 2: Celda con 1 asignación en el grupo actual (posible dupla)
+      if (asignacionesCelda.length === 1) {
+        if (asignacionesDelDocente.length > 0) {
+          // El docente ya está en esta celda
+          celda.setAttribute('title', `${_docenteSeleccionado.apellido} ya está asignado en esta hora`);
+          return;
+        }
+
+        if (ocupacionInterna) {
+          celda.classList.add('ocupado-interno');
+          const materiaInfo = ocupacionInterna.asignatura_nombre ? ` (${ocupacionInterna.asignatura_nombre})` : '';
+          celda.setAttribute('title', `Ocupado en el liceo: Grupo ${ocupacionInterna.grupo_nombre}${materiaInfo}`);
+          return;
+        }
+
+        if (ocupacionExterna) {
+          celda.classList.add('ocupado-externo');
+          celda.setAttribute('title', 'No disponible (ocupado en otra institución)');
+          return;
+        }
+
+        // Disponible para formar dupla
         celda.classList.add('docente-disponible');
-        celda.classList.remove('ocupado-externo');
-      } else {
-        celda.classList.remove('docente-disponible');
-        celda.classList.remove('ocupado-externo');
+        celda.setAttribute('title', `Disponible para agregar dupla pedagógica con ${asignacionesCelda[0].asignatura_nombre}`);
+        return;
+      }
+
+      // Caso 3: Celda con 2 asignaciones (dupla completa)
+      if (ocupacionInterna) {
+        celda.setAttribute('title', `Dupla completa — El docente dicta en ${ocupacionInterna.grupo_nombre}`);
+      } else if (ocupacionExterna) {
+        celda.setAttribute('title', 'Dupla completa — El docente está ocupado en otra institución');
       }
     });
   }
@@ -1278,7 +1365,10 @@ window.Modulo_armado = (() => {
       }
 
       if (_docenteOcupacionInterna && _docenteOcupacionInterna[clave]) {
-        return 'El docente ya está asignado en otro grupo del liceo en ese horario.';
+        const info = _docenteOcupacionInterna[clave];
+        const nomGrupo = info?.grupo_nombre ? ` (Grupo ${info.grupo_nombre})` : '';
+        const nomAsig = info?.asignatura_nombre ? ` en ${info.asignatura_nombre}` : '';
+        return `El docente ya está asignado en otro grupo del liceo${nomGrupo}${nomAsig} en ese horario.`;
       }
 
       return null;
