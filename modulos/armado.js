@@ -824,7 +824,7 @@ window.Modulo_armado = (() => {
     const idsDocentesAsignados = new Set(_docentesAsignadosGrupo.map(a => a.id_docente));
     const docentesDelGrupo = _docentes.filter(doc => idsDocentesAsignados.has(doc.id));
 
-    // Ordenar por grado (desc), luego puntaje (desc)
+    // Ordenar: primero efectivos (mayor grado, luego puntaje), luego interinos (mismo criterio)
     docentesDelGrupo.sort((a, b) => {
       const asigsA = _asignacionesDocente[a.id] || [];
       const asigsB = _asignacionesDocente[b.id] || [];
@@ -835,6 +835,10 @@ window.Modulo_armado = (() => {
       const mejorB = asigsB
         .filter(a => a.id_nivel === _grupoActual?.id_nivel)
         .sort((x, y) => (y.grado - x.grado) || (y.puntaje - x.puntaje))[0];
+
+      const efectivoA = mejorA?.efectivo ? 1 : 0;
+      const efectivoB = mejorB?.efectivo ? 1 : 0;
+      if (efectivoA !== efectivoB) return efectivoB - efectivoA;
 
       const gradoA = mejorA?.grado || 0;
       const gradoB = mejorB?.grado || 0;
